@@ -33,10 +33,16 @@ def execute_training_routine():
     # Retrieve explicitly requested parameters strictly from the formal terminal arguments
     args = parse_training_arguments()
     
+    # Detect if we are using multi-level training (comma-separated list)
+    if "," in args.env_id:
+        target_envs = [e.strip() for e in args.env_id.split(",")]
+    else:
+        target_envs = args.env_id
+
     print(f"Initializing specifically targeted training sequence natively mapped directly to device axis: {args.device}")
     
     # Instantiate the mathematically wrapped core emulator arrays
-    environment_instance = create_mario_environment(env_id=args.env_id, n_envs=args.n_envs)
+    environment_instance = create_mario_environment(env_id=target_envs, n_envs=args.n_envs)
     
     # Define an atomic checkpoint callback system formally explicitly mapped to logically dump secure network weights periodically
     checkpoint_callback = CheckpointCallback(

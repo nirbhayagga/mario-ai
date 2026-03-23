@@ -24,7 +24,7 @@ def main():
         "--mode", 
         type=str, 
         required=True, 
-        choices=["validate", "train", "evaluate", "manual", "compete", "visualize", "plot", "dashboard"],
+        choices=["validate", "train", "evaluate", "manual", "compete", "visualize", "plot", "dashboard", "train_general"],
         help="The pipeline operation mode to execute."
     )
     
@@ -43,7 +43,11 @@ def main():
     args, unknown = parser.parse_known_args()
 
     # Map level "1-1" to "SuperMarioBros-1-1-v0"
-    env_id = f"SuperMarioBros-{args.level}-v0"
+    if "," in args.level:
+        levels = [f"SuperMarioBros-{l.strip()}-v0" for l in args.level.split(",")]
+        env_id = ",".join(levels)
+    else:
+        env_id = f"SuperMarioBros-{args.level}-v0"
     
     # Base python command within the venv (assumes venv/bin/python)
     python_cmd = [sys.executable] # Use current interpreter if running from venv
@@ -103,6 +107,30 @@ def main():
         db_cmd = ["tensorboard", "--logdir", "tensorboard_logs"] + unknown
         run_command(db_cmd)
         
+    elif args.mode == "train_general":
+        # Curated list of levels for "General" training
+        general_levels = [
+            "SuperMarioBros-1-1-v0",
+            "SuperMarioBros-1-2-v0",
+            "SuperMarioBros-2-1-v0",
+            "SuperMarioBros-3-1-v0",
+            "SuperMarioBros-4-1-v0"
+        ]
+        levels_str = ",".join(general_levels)
+        
+        train_cmd = python_cmd + [
+            "src/train.py", 
+            "--env_id", levels_str,
+            "--total_timesteps", str(args.total_timesteps),
+            "--device", args.device,
+            "--n_envs", str(len(general_levels)) # Automatically use one env per level
+        ]
+        if args.load_model:
+            train_cmd += ["--load_model", args.load_model]
+        
+        train_cmd += unknown
+        run_command(train_cmd)
+
     elif args.mode == "manual":
         run_command(python_cmd + ["src/manual_play.py", "--env_id", env_id])
         

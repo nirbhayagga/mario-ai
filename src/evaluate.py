@@ -26,8 +26,14 @@ def export_evaluation_video():
     
     args = parse_evaluation_arguments()
     
+    # Detect if we are using multi-level training (comma-separated list)
+    if "," in args.env_id:
+        target_envs = [e.strip() for e in args.env_id.split(",")]
+    else:
+        target_envs = args.env_id
+
     # Explicitly recreate the exact wrapper sequence natively required to ensure input shape matching
-    env = create_mario_environment(env_id=args.env_id)
+    env = create_mario_environment(env_id=target_envs)
     
     # Load the specific serialized weights into exactly the identical PPO framework
     model_instance = PPO.load(args.model_path, device=args.device)

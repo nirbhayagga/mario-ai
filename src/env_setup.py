@@ -13,22 +13,28 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, Subproc
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1):
     """
     Instantiates and wraps the Reinforcement Learning environment.
-    Supports single or multiple parallel environments.
+    Supports single or multiple parallel environments, which can be different levels.
     """
     
-    def make_env():
-        env = gym_super_mario_bros.make(env_id)
-        env = JoypadSpace(env, SIMPLE_MOVEMENT)
-        env = GrayScaleObservation(env, keep_dim=True)
-        env = ResizeObservation(env, shape=84)
-        return env
+    def make_env(target_id):
+        def _init():
+            env = gym_super_mario_bros.make(target_id)
+            env = JoypadSpace(env, SIMPLE_MOVEMENT)
+            env = GrayScaleObservation(env, keep_dim=True)
+            env = ResizeObservation(env, shape=84)
+            return env
+        return _init
 
-    if n_envs > 1:
-        # Use SubprocVecEnv for parallel execution across CPU cores
-        env = SubprocVecEnv([make_env for _ in range(n_envs)])
+    if isinstance(env_id, list):
+        # Multi-level training: Create each level in the list
+        print(f"Creating specifically targeted multi-level environment matrix: {env_id}")
+        env = SubprocVecEnv([make_env(eid) for eid in env_id])
+    elif n_envs > 1:
+        # Single-level parallel training
+        env = SubprocVecEnv([make_env(env_id) for _ in range(n_envs)])
     else:
-        # Use DummyVecEnv for single environment execution
-        env = DummyVecEnv([make_env])
+        # Single-level sequential training
+        env = DummyVecEnv([make_env(env_id)])
     
     # Finally, stack the four most recent operational frames
     env = VecFrameStack(env, n_stack=4, channels_order='last')

@@ -14,11 +14,17 @@ def validate_environment_initialization():
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     args = parser.parse_args()
     
+    # Detect if we are using multi-level training (comma-separated list)
+    if "," in args.env_id:
+        target_envs = [e.strip() for e in args.env_id.split(",")]
+    else:
+        target_envs = args.env_id
+
     print(f"Initiating formal environment validation sequence for: {args.env_id}...")
     
     try:
         # Construct the deeply wrapped environment precisely as the training script will
-        environment = create_mario_environment(env_id=args.env_id)
+        environment = create_mario_environment(env_id=target_envs)
         
         # Reset the environment explicitly to force ROM memory loading
         observation = environment.reset()

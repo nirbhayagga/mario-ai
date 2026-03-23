@@ -41,6 +41,14 @@ python run_pipeline.py --mode train --level 1-1 --total_timesteps 2000000 --devi
 ```bash
 python run_pipeline.py --mode train --level 1-2 --load_model models/mario_ppo_final.zip --total_timesteps 500000
 ```
+**General Training**: Train on a curated set of diverse levels (1-1, 1-2, 2-1, 3-1, 4-1) to improve agent adaptability:
+```bash
+python run_pipeline.py --mode train_general --total_timesteps 2000000
+```
+**Custom Multi-Level**: Specify your own list of levels for simultaneous training:
+```bash
+python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 1000000
+```
 
 ### 3. Evaluation & Visualization
 * **Single Render**: Create a video of one model.
