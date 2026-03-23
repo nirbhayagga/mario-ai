@@ -24,22 +24,22 @@ pip install -r requirements.txt
 
 ## Usage (Unified Pipeline)
 
-Use the `run_pipeline.py` script to execute all core tasks:
+Use the `run_pipeline.py` script to execute all core tasks. You can specify different levels using the `--level` argument (e.g., `1-1`, `1-2`, `2-1`, `2-2`, etc.).
 
 ### 1. Validate Environment
-Confirm that the emulator and wrappers are working correctly:
+Confirm that the emulator and wrappers are working correctly for a specific level:
 ```bash
-python run_pipeline.py --mode validate
+python run_pipeline.py --mode validate --level 1-1
 ```
 
 ### 2. Training
-Train the agent using CLI hyperparameters:
+Train the agent on a specific level with parallel environments:
 ```bash
-python run_pipeline.py --mode train --total_timesteps 2000000 --device cuda --n_envs 4
+python run_pipeline.py --mode train --level 1-1 --total_timesteps 2000000 --device cuda --n_envs 4
 ```
-**Resume Training**: Load an existing model and continue training:
+**Resume Training**: Load an existing model and continue training on the same or a different level:
 ```bash
-python run_pipeline.py --mode train --load_model models/mario_ppo_final.zip --total_timesteps 500000
+python run_pipeline.py --mode train --level 1-2 --load_model models/mario_ppo_final.zip --total_timesteps 500000
 ```
 
 ### 3. Evaluation & Visualization

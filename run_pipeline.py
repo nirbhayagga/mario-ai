@@ -29,6 +29,7 @@ def main():
     )
     
     # Training / Evaluation Arguments
+    parser.add_argument("--level", type=str, default="1-1", help="The Mario level to run (e.g., 1-1, 1-2, 2-1).")
     parser.add_argument("--total_timesteps", type=int, default=1000000, help="Total timesteps for training.")
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"], help="Hardware device selection.")
     parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
@@ -41,18 +42,22 @@ def main():
 
     args, unknown = parser.parse_known_args()
 
+    # Map level "1-1" to "SuperMarioBros-1-1-v0"
+    env_id = f"SuperMarioBros-{args.level}-v0"
+    
     # Base python command within the venv (assumes venv/bin/python)
     python_cmd = [sys.executable] # Use current interpreter if running from venv
 
     if args.mode == "validate":
-        run_command(python_cmd + ["src/validate.py"])
+        run_command(python_cmd + ["src/validate.py", "--env_id", env_id])
     
     elif args.mode == "train":
         train_cmd = python_cmd + [
             "src/train.py", 
             "--total_timesteps", str(args.total_timesteps),
             "--device", args.device,
-            "--n_envs", str(args.n_envs)
+            "--n_envs", str(args.n_envs),
+            "--env_id", env_id
         ]
         if args.load_model:
             train_cmd += ["--load_model", args.load_model]
@@ -70,7 +75,8 @@ def main():
             "src/evaluate.py",
             "--model_path", model_to_use,
             "--video_output", args.video_output,
-            "--device", args.device
+            "--device", args.device,
+            "--env_id", env_id
         ] + unknown
         run_command(eval_cmd)
         
@@ -80,7 +86,8 @@ def main():
             "src/visualize_progress.py",
             "--checkpoint_dir", args.checkpoint_dir,
             "--output_path", args.video_output,
-            "--device", args.device
+            "--device", args.device,
+            "--env_id", env_id
         ] + unknown
         run_command(vis_cmd)
 
@@ -97,10 +104,10 @@ def main():
         run_command(db_cmd)
         
     elif args.mode == "manual":
-        run_command(python_cmd + ["src/manual_play.py"])
+        run_command(python_cmd + ["src/manual_play.py", "--env_id", env_id])
         
     elif args.mode == "compete":
-        run_command(python_cmd + ["src/compete.py"])
+        run_command(python_cmd + ["src/compete.py", "--env_id", env_id])
 
 if __name__ == "__main__":
     main()

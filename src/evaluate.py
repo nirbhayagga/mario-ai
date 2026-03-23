@@ -5,12 +5,7 @@ This explicitly loads serialized algorithm weights and strictly outputs validati
 
 import argparse
 import cv2
-import gym_super_mario_bros
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
-from nes_py.wrappers import JoypadSpace
-from stable_baselines3 import PPO
-from gym.wrappers import GrayScaleObservation, ResizeObservation
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
+from env_setup import create_mario_environment
 import numpy as np
 
 def parse_evaluation_arguments():
@@ -21,6 +16,7 @@ def parse_evaluation_arguments():
     parser.add_argument("--model_path", type=str, default="mario_ppo_final.zip", help="The absolute string location of the specific serialized neural weights.")
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"], help="Hardware operational string selector.")
     parser.add_argument("--video_output", type=str, default="evaluation_run.mp4", help="String path destination specifically for the explicitly exported analytical mp4 video format.")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     return parser.parse_args()
 
 def export_evaluation_video():
@@ -31,12 +27,7 @@ def export_evaluation_video():
     args = parse_evaluation_arguments()
     
     # Explicitly recreate the exact wrapper sequence natively required to ensure input shape matching
-    env = gym_super_mario_bros.make("SuperMarioBros-v0")
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    env = GrayScaleObservation(env, keep_dim=True)
-    env = ResizeObservation(env, shape=84)
-    env = DummyVecEnv([lambda: env])
-    env = VecFrameStack(env, n_stack=4, channels_order='last')
+    env = create_mario_environment(env_id=args.env_id)
     
     # Load the specific serialized weights into exactly the identical PPO framework
     model_instance = PPO.load(args.model_path, device=args.device)

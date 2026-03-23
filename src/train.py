@@ -22,6 +22,7 @@ def parse_training_arguments():
     parser.add_argument("--tensorboard_log", type=str, default="./tensorboard_logs/", help="The formal exact directory path specifically securely capturing analytical tf log files.")
     parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
     parser.add_argument("--load_model", type=str, default=None, help="Path to a pre-trained model to resume training from.")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     return parser.parse_args()
 
 def execute_training_routine():
@@ -35,7 +36,7 @@ def execute_training_routine():
     print(f"Initializing specifically targeted training sequence natively mapped directly to device axis: {args.device}")
     
     # Instantiate the mathematically wrapped core emulator arrays
-    environment_instance = create_mario_environment(n_envs=args.n_envs)
+    environment_instance = create_mario_environment(env_id=args.env_id, n_envs=args.n_envs)
     
     # Define an atomic checkpoint callback system formally explicitly mapped to logically dump secure network weights periodically
     checkpoint_callback = CheckpointCallback(

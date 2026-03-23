@@ -3,18 +3,22 @@ Validation Script
 This file explicitly initializes the virtual emulator namespace to systematically verify that the nes-py environment wrappers construct without throwing C++ backend segmentation allocation errors.
 """
 
-import sys
+import argparse
 from env_setup import create_mario_environment
 
 def validate_environment_initialization():
     """
     Executes a formal instantiation of the wrapper matrix and forces exactly one operational step to verify rendering stability natively.
     """
-    print("Initiating formal environment validation sequence specifically to check emulation backend...")
+    parser = argparse.ArgumentParser(description="Mario Environment Validation")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
+    args = parser.parse_args()
+    
+    print(f"Initiating formal environment validation sequence for: {args.env_id}...")
     
     try:
         # Construct the deeply wrapped environment precisely as the training script will
-        environment = create_mario_environment()
+        environment = create_mario_environment(env_id=args.env_id)
         
         # Reset the environment explicitly to force ROM memory loading
         observation = environment.reset()

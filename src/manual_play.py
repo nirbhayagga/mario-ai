@@ -9,14 +9,20 @@ import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from nes_py.wrappers import JoypadSpace
 
+import argparse
+
 def launch_manual_human_gameplay():
     """
     Instantiates the raw natively unaltered physics emulator. It heavily utilizes PyGame to trap human interface strokes, correctly resolving keyboard logic into the discrete numeric integer format originally anticipated exclusively by the algorithmic artificial intelligence.
     """
-    print("Initiating securely organic explicit human matrix emulator structurally natively capturing strict mathematical feedback accurately.")
+    parser = argparse.ArgumentParser(description="Mario Manual Play")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
+    args = parser.parse_args()
+
+    print(f"Initiating securely organic explicit human matrix emulator for: {args.env_id}")
     
     # Establish the specifically requested simulation environment strictly identical to the training container configurations.
-    env = gym_super_mario_bros.make("SuperMarioBros-v0")
+    env = gym_super_mario_bros.make(args.env_id)
     
     # Incorporate the specific `JoypadSpace` transformation layer correctly discretizing complex controller bits into simply enumerated integer flags completely naturally.
     env = JoypadSpace(env, SIMPLE_MOVEMENT)

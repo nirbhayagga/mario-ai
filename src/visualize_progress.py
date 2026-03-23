@@ -12,7 +12,7 @@ from env_setup import create_mario_environment
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import numpy as np
 
-def create_montage_video(checkpoint_dir, output_path, num_steps=1000, device="cpu"):
+def create_montage_video(checkpoint_dir, output_path, env_id="SuperMarioBros-v0", num_steps=1000, device="cpu"):
     """
     Loads all .zip models in checkpoint_dir and renders them in a grid.
     """
@@ -30,10 +30,10 @@ def create_montage_video(checkpoint_dir, output_path, num_steps=1000, device="cp
     models = []
     names = []
 
-    print(f"Loading {num_models} models for comparison...")
+    print(f"Loading {num_models} models for comparison on {env_id}...")
 
     for path in models_to_compare:
-        env = create_mario_environment(n_envs=1)
+        env = create_mario_environment(env_id=env_id, n_envs=1)
         model = PPO.load(path, device=device)
         envs.append(env)
         models.append(model)
@@ -99,10 +99,11 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, default="videos/progress_montage.mp4", help="Path to the output montage video.")
     parser.add_argument("--num_steps", type=int, default=1000, help="Number of steps to render.")
     parser.add_argument("--device", type=str, default="cpu", help="Device for model inference.")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     
     args = parser.parse_args()
     
     # Ensure output directory exists
     os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
     
-    create_montage_video(args.checkpoint_dir, args.output_path, args.num_steps, args.device)
+    create_montage_video(args.checkpoint_dir, args.output_path, args.env_id, args.num_steps, args.device)
