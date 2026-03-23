@@ -67,8 +67,11 @@ python run_pipeline.py --mode train --level 1-2 --load_model models/mario_ppo_fi
 ```
 **General Training**: Train on a curated set of diverse levels (1-1, 1-2, 2-1, 3-1, 4-1) to improve agent adaptability:
 ```bash
-python run_pipeline.py --mode train_general --total_timesteps 2000000
+python run_pipeline.py --mode train_general --total_timesteps 2000000 --use_custom_reward --lr_schedule
 ```
+**Optimized Training Flags**:
+- `--use_custom_reward`: Actives flagpole bonuses and death penalties.
+- `--lr_schedule`: Linear learning rate annealing for better convergence.
 **Custom Multi-Level**: Specify your own list of levels for simultaneous training:
 ```bash
 python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 1000000

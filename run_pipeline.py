@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--total_timesteps", type=int, default=1000000, help="Total timesteps for training.")
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"], help="Hardware device selection.")
     parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
+    parser.add_argument("--use_custom_reward", action="store_true", help="Enable advanced reward shaping.")
+    parser.add_argument("--lr_schedule", action="store_true", help="Enable linear learning rate annealing.")
     parser.add_argument("--load_model", type=str, default=None, help="Path to a pre-trained model to resume or evaluate.")
     
     # Evaluation / Visualization Arguments

@@ -23,7 +23,17 @@ def parse_training_arguments():
     parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
     parser.add_argument("--load_model", type=str, default=None, help="Path to a pre-trained model to resume training from.")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
+    parser.add_argument("--use_custom_reward", action="store_true", help="Enable advanced reward shaping.")
+    parser.add_argument("--lr_schedule", action="store_true", help="Enable linear learning rate annealing.")
     return parser.parse_args()
+
+def linear_schedule(initial_value):
+    """
+    Linear learning rate schedule logic.
+    """
+    def func(progress_remaining):
+        return progress_remaining * initial_value
+    return func
 
 def execute_training_routine():
     """
@@ -42,7 +52,12 @@ def execute_training_routine():
     print(f"Initializing specifically targeted training sequence natively mapped directly to device axis: {args.device}")
     
     # Instantiate the mathematically wrapped core emulator arrays
-    environment_instance = create_mario_environment(env_id=target_envs, n_envs=args.n_envs)
+    environment_instance = create_mario_environment(
+        env_id=target_envs, 
+        n_envs=args.n_envs, 
+        use_custom_reward=args.use_custom_reward,
+        use_noop=args.use_custom_reward # Use noop when custom rewards are enabled
+    )
     
     # Define an atomic checkpoint callback system formally explicitly mapped to logically dump secure network weights periodically
     checkpoint_callback = CheckpointCallback(
@@ -62,10 +77,16 @@ def execute_training_routine():
         )
     else:
         print("Initializing specifically targeted new neural weight matrices natively.")
+        
+        # Determine the learning rate schedule mechanism
+        lr = args.learning_rate
+        if args.lr_schedule:
+            lr = linear_schedule(args.learning_rate)
+            
         neural_network_model = PPO(
             policy="CnnPolicy", 
             env=environment_instance, 
-            learning_rate=args.learning_rate,
+            learning_rate=lr,
             n_steps=args.n_steps,
             batch_size=args.batch_size,
             device=args.device,
