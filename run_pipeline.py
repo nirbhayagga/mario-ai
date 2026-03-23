@@ -43,11 +43,17 @@ def main():
     args, unknown = parser.parse_known_args()
 
     # Map level "1-1" to "SuperMarioBros-1-1-v0"
+    def map_level(l):
+        l = l.strip()
+        if "-v" in l:
+            return f"SuperMarioBros-{l}"
+        return f"SuperMarioBros-{l}-v0"
+
     if "," in args.level:
-        levels = [f"SuperMarioBros-{l.strip()}-v0" for l in args.level.split(",")]
+        levels = [map_level(l) for l in args.level.split(",")]
         env_id = ",".join(levels)
     else:
-        env_id = f"SuperMarioBros-{args.level}-v0"
+        env_id = map_level(args.level)
     
     # Base python command within the venv (assumes venv/bin/python)
     python_cmd = [sys.executable] # Use current interpreter if running from venv

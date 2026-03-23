@@ -22,9 +22,33 @@ pip install -r requirements.txt
 
 ---
 
-## Usage (Unified Pipeline)
+Use the `run_pipeline.py` script to execute all core tasks. You can specify different levels using the `--level` argument (e.g., `1-1`, `1-2`, `2-1`).
 
-Use the `run_pipeline.py` script to execute all core tasks. You can specify different levels using the `--level` argument (e.g., `1-1`, `1-2`, `2-1`, `2-2`, etc.).
+### Stage Versions
+Each level has 4 visual variations which can be targeted by appending `-v0` to `-v3` to the level (defaults to `-v0`):
+*   **`-v0`**: Original NES graphics.
+*   **`-v1`**: No background (removes clouds/scenery).
+*   **`-v2`**: Minimalist (black background, essentials only).
+*   **`-v3`**: Transparent world (only sprites like Mario/enemies).
+
+### Level Types
+The 32 levels fall into four distinct environmental categories, each requiring different AI skills:
+*   **Overworld (Standard)**: Classic platforming (e.g., 1-1, 2-1). focuses on jumping and mobility.
+*   **Underground**: Ceiling-constrained stages (e.g., 1-2, 4-2). requires tighter movement control.
+*   **Underwater**: Complete physics shift (e.g., 2-2, 7-2). AI must learn to "swim" instead of jump.
+*   **Castle (Fortress)**: Hazards like firebars and lava (e.g., 1-4, 8-4). tests timing and hazard avoidance.
+
+### Level Reference Table
+| World | 1 (Overworld) | 2 (Underground/Water) | 3 (Overworld/Other) | 4 (Castle) |
+| :--- | :--- | :--- | :--- | :--- |
+| **World 1** | 1-1 (Over) | 1-2 (Under) | 1-3 (Over) | 1-4 (Castle) |
+| **World 2** | 2-1 (Over) | 2-2 (Water) | 2-3 (Over) | 2-4 (Castle) |
+| **World 3** | 3-1 (Over) | 3-2 (Over) | 3-3 (Over) | 3-4 (Castle) |
+| **World 4** | 4-1 (Over) | 4-2 (Under) | 4-3 (Over) | 4-4 (Castle) |
+| **World 5** | 5-1 (Over) | 5-2 (Over) | 5-3 (Over) | 5-4 (Castle) |
+| **World 6** | 6-1 (Over) | 6-2 (Under) | 6-3 (Over) | 6-4 (Castle) |
+| **World 7** | 7-1 (Over) | 7-2 (Water) | 7-3 (Over) | 7-4 (Castle) |
+| **World 8** | 8-1 (Over) | 8-2 (Over) | 8-3 (Over) | 8-4 (Castle) |
 
 ### 1. Validate Environment
 Confirm that the emulator and wrappers are working correctly for a specific level:
