@@ -10,12 +10,15 @@ checkpoint_models/
 *.zip
 *.mp4
 *.log
+*.png
 .DS_Store
 pip_install_log.txt
 python_ver.log
 output.log
 eval.log
 train.log
+pipeline_test.log
+benchmark.log
 
 # Markdown
 *.md

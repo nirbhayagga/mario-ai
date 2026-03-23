@@ -35,14 +35,30 @@ python run_pipeline.py --mode validate
 ### 2. Training
 Train the agent using CLI hyperparameters:
 ```bash
-python run_pipeline.py --mode train --total_timesteps 2000000 --device cuda
+python run_pipeline.py --mode train --total_timesteps 2000000 --device cuda --n_envs 4
+```
+**Resume Training**: Load an existing model and continue training:
+```bash
+python run_pipeline.py --mode train --load_model models/mario_ppo_final.zip --total_timesteps 500000
 ```
 
-### 3. Evaluation (Rendering)
-Render the agent's performance into a video:
-```bash
-python run_pipeline.py --mode evaluate --model_path models/mario_ppo_final.zip
-```
+### 3. Evaluation & Visualization
+* **Single Render**: Create a video of one model.
+  ```bash
+  python run_pipeline.py --mode evaluate --model_path models/mario_ppo_final.zip
+  ```
+* **Progress Montage**: Render a side-by-side comparison of multiple checkpoints from `checkpoint_models/`.
+  ```bash
+  python run_pipeline.py --mode visualize --video_output videos/progress_montage.mp4
+  ```
+* **Performance Plot**: Generate a static reward curve from TensorBoard logs.
+  ```bash
+  python run_pipeline.py --mode plot --output_path logs/reward_curve.png
+  ```
+* **Dashboard (Web UI)**: Launch TensorBoard to see detailed training analytics.
+  ```bash
+  python run_pipeline.py --mode dashboard
+  ```
 
 ### 4. Interactive Tools
 * **Manual Play**: Control Mario yourself.

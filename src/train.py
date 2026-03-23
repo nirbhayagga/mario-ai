@@ -21,6 +21,7 @@ def parse_training_arguments():
     parser.add_argument("--n_steps", type=int, default=512, help="The exact number of operational sequential steps to accumulate before triggering gradient updates.")
     parser.add_argument("--tensorboard_log", type=str, default="./tensorboard_logs/", help="The formal exact directory path specifically securely capturing analytical tf log files.")
     parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
+    parser.add_argument("--load_model", type=str, default=None, help="Path to a pre-trained model to resume training from.")
     return parser.parse_args()
 
 def execute_training_routine():
@@ -44,16 +45,26 @@ def execute_training_routine():
     )
     
     # Construct the primary operational Proximal Policy Optimization framework mapping the CnnPolicy matrix securely injecting strictly formal TensorBoard parameters
-    neural_network_model = PPO(
-        policy="CnnPolicy", 
-        env=environment_instance, 
-        learning_rate=args.learning_rate,
-        n_steps=args.n_steps,
-        batch_size=args.batch_size,
-        device=args.device,
-        verbose=1,
-        tensorboard_log=args.tensorboard_log
-    )
+    if args.load_model:
+        print(f"Resuming training from specifically targeted serialized model: {args.load_model}")
+        neural_network_model = PPO.load(
+            args.load_model, 
+            env=environment_instance, 
+            device=args.device,
+            tensorboard_log=args.tensorboard_log
+        )
+    else:
+        print("Initializing specifically targeted new neural weight matrices natively.")
+        neural_network_model = PPO(
+            policy="CnnPolicy", 
+            env=environment_instance, 
+            learning_rate=args.learning_rate,
+            n_steps=args.n_steps,
+            batch_size=args.batch_size,
+            device=args.device,
+            verbose=1,
+            tensorboard_log=args.tensorboard_log
+        )
     
     # Execute exactly the secure learning mathematical loop formally invoking the specific Rich progress bar matrices comprehensively mathematically
     # Note: progress_bar=True natively securely maps tqdm or rich console visualization dynamically structurally
