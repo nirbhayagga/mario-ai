@@ -6,7 +6,9 @@ This explicitly loads serialized algorithm weights and strictly outputs validati
 import argparse
 import cv2
 from env_setup import create_mario_environment
+from stable_baselines3 import PPO
 import numpy as np
+from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 
 def parse_evaluation_arguments():
     """
@@ -45,7 +47,7 @@ def export_evaluation_video():
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     
     # Establish explicit rendering constraints mapping exactly to standard NES screen resolutions Native 240x256 dimensions
-    video_writer = cv2.VideoWriter(args.video_output, fourcc, 60.0, (256, 240))
+    video_writer = cv2.VideoWriter(args.video_output, fourcc, 15.0, (256, 240))
     
     total_running_reward = 0
     done = False

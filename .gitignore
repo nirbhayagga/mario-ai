@@ -1,11 +1,7 @@
 venv/
 __pycache__/
 *.pyc
-logs/
-models/
-videos/
-tensorboard_logs/
-checkpoint_models/
+runs/
 *.pt
 *.zip
 *.mp4
@@ -14,11 +10,6 @@ checkpoint_models/
 .DS_Store
 pip_install_log.txt
 python_ver.log
-output.log
-eval.log
-train.log
-pipeline_test.log
-benchmark.log
 
 # Markdown
 *.md

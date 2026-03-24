@@ -33,7 +33,10 @@ def create_montage_video(checkpoint_dir, output_path, env_id="SuperMarioBros-v0"
     print(f"Loading {num_models} models for comparison on {env_id}...")
 
     for path in models_to_compare:
-        env = create_mario_environment(env_id=env_id, n_envs=1)
+        # If passed a list of levels, just use the first one for visualization
+        target_env = [e.strip() for e in env_id.split(",")][0] if "," in env_id else env_id
+        
+        env = create_mario_environment(env_id=target_env, n_envs=1)
         model = PPO.load(path, device=device)
         envs.append(env)
         models.append(model)
@@ -50,7 +53,7 @@ def create_montage_video(checkpoint_dir, output_path, env_id="SuperMarioBros-v0"
     out_h = frame_h * grid_h
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(output_path, fourcc, 60.0, (out_w, out_h))
+    video_writer = cv2.VideoWriter(output_path, fourcc, 15.0, (out_w, out_h))
 
     observations = [env.reset() for env in envs]
     dones = [False] * num_models

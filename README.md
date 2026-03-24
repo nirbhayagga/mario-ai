@@ -7,7 +7,15 @@ This repository contains scripts to train a Reinforcement Learning agent to play
 Python 3.8 or 3.9 is required due to dependencies that are incompatible with newer versions.
 
 ### Step 1: Virtual Environment Creation
-Create a virtual environment:
+You can use standard `venv` or `mamba` (recommended for faster package resolution).
+
+**Option A (Mamba/Conda) - Recommended**:
+```bash
+mamba create -n mario_rl python=3.9
+mamba activate mario_rl
+```
+
+**Option B (Standard venv)**:
 ```bash
 python3 -m venv venv
 ```
@@ -23,6 +31,26 @@ pip install -r requirements.txt
 ---
 
 Use the `run_pipeline.py` script to execute all core tasks. You can specify different levels using the `--level` argument (e.g., `1-1`, `1-2`, `2-1`).
+
+### Global Command Line Arguments
+The pipeline accepts the following arguments across various modes:
+*   `--mode`: Required. Choose from: `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `train_general`, `manual`, `compete`, `all`.
+*   `--level`: The stage to target (e.g., `1-1`, `1-1-v1`). Can accept comma-separated lists for multi-level combinations.
+*   `--device`: `cuda` or `cpu` (default: `cuda`).
+*   `--total_timesteps`: Number of steps for training (default: 1000000).
+*   `--n_envs`: Number of parallel environments (default: 1).
+*   `--use_custom_reward`: Enables advanced reward shaping (flag bonuses, death penalties).
+*   `--lr_schedule`: Enables linear learning rate annealing over time.
+*   `--load_model`: Path to a `.zip` model to resume training from.
+*   `--model_path`: Target model for evaluation.
+*   `--checkpoint_dir`: Target directory for generating visualization montages.
+*   `--video_output`: Destination path for exported `.mp4` video files.
+
+### Unified Execution Mode
+To run the entire pipeline autonomously (Validation -> Training -> Evaluation -> Visualization Montage -> Performance Plot), use the `all` mode:
+```bash
+python run_pipeline.py --mode all --level 1-1 --total_timesteps 1000000 --use_custom_reward --lr_schedule
+```
 
 ### Stage Versions
 Each level has 4 visual variations which can be targeted by appending `-v0` to `-v3` to the level (defaults to `-v0`):
@@ -63,7 +91,7 @@ python run_pipeline.py --mode train --level 1-1 --total_timesteps 2000000 --devi
 ```
 **Resume Training**: Load an existing model and continue training on the same or a different level:
 ```bash
-python run_pipeline.py --mode train --level 1-2 --load_model models/mario_ppo_final.zip --total_timesteps 500000
+python run_pipeline.py --mode train --level 1-2 --load_model runs/1-1_2000000steps/mario_ppo_final.zip --total_timesteps 500000
 ```
 **General Training**: Train on a curated set of diverse levels (1-1, 1-2, 2-1, 3-1, 4-1) to improve agent adaptability:
 ```bash
@@ -72,27 +100,34 @@ python run_pipeline.py --mode train_general --total_timesteps 2000000 --use_cust
 **Optimized Training Flags**:
 - `--use_custom_reward`: Actives flagpole bonuses and death penalties.
 - `--lr_schedule`: Linear learning rate annealing for better convergence.
+- `--n_steps 2048`: Massively expands the trajectory horizon (standard GitHub consensus for long 2D levels).
+- `--gamma 0.99`: Mathematical discounting factor explicitly tuned for deep long-term planning.
+- `--vf_coef 0.5`: Perfectly balances actor-critic variance mathematically.
 **Custom Multi-Level**: Specify your own list of levels for simultaneous training:
 ```bash
 python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 1000000
 ```
 
 ### 3. Evaluation & Visualization
-* **Single Render**: Create a video of one model.
+* **Unified Pipeline (All Modes)**: Sequentially executes validation, training, video evaluation, monitoring montage, and plotting autonomously explicitly mapped into a specific `run_id` folder.
   ```bash
-  python run_pipeline.py --mode evaluate --model_path models/mario_ppo_final.zip
+  python run_pipeline.py --mode all --level 1-1 --total_timesteps 2000000 --use_custom_reward --lr_schedule
   ```
-* **Progress Montage**: Render a side-by-side comparison of multiple checkpoints from `checkpoint_models/`.
+* **Single Render**: Create a video of one model explicitly from a generated run namespace.
   ```bash
-  python run_pipeline.py --mode visualize --video_output videos/progress_montage.mp4
+  python run_pipeline.py --mode evaluate --model_path runs/1-1_2000000steps/mario_ppo_final.zip
+  ```
+* **Progress Montage**: Render a side-by-side comparison of multiple checkpoints dynamically.
+  ```bash
+  python run_pipeline.py --mode visualize --checkpoint_dir runs/1-1_2000000steps/checkpoints
   ```
 * **Performance Plot**: Generate a static reward curve from TensorBoard logs.
   ```bash
-  python run_pipeline.py --mode plot --output_path logs/reward_curve.png
+  python run_pipeline.py --mode plot --level 1-1
   ```
 * **Dashboard (Web UI)**: Launch TensorBoard to see detailed training analytics.
   ```bash
-  python run_pipeline.py --mode dashboard
+  python run_pipeline.py --mode dashboard --level 1-1
   ```
 
 ### 4. Interactive Tools
@@ -100,16 +135,26 @@ python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 10
   ```bash
   python run_pipeline.py --mode manual
   ```
-* **Competition**: Compete against the trained agent.
+* **Competition**: Compete against the trained agent natively directly utilizing the `mario_ppo_final` weights specific to the level logic natively.
   ```bash
-  python run_pipeline.py --mode compete
+  python run_pipeline.py --mode compete --level 1-1 --model_path runs/1-1_2000000steps/mario_ppo_final.zip
   ```
 
 ---
 
 ## Directory Organization
 * `src/`: Core Python modules and script logic.
-* `models/`: Saved model weights (`.zip`).
-* `videos/`: Exported evaluation videos.
-* `logs/`: Installation and runtime logs.
-* `tensorboard_logs/`: Analytical dashboard data.
+* `runs/`: Dynamic grouping namespaces. Each experiment generates an isolated folder named using the convention `<level>_<timesteps>steps_[rew]_[lr]_[resume]`:
+    * `<level>`: The Mario level (e.g., `1-1`) or `general` for mixed training.
+    * `<timesteps>`: Total training steps evaluated.
+    * `_rew`: Appended if `--use_custom_reward` was active.
+    * `_lr`: Appended if `--lr_schedule` was active.
+    * `_resume`: Appended if `--load_model` was used to explicitly resume training from older weights.
+    
+    Inside each specific namespace (e.g., `runs/1-1_2000000steps_rew_lr/`), you will find exactly the outputs constrained to that run:
+    * `tensorboard/`: Nested analytical logs actively updated during the training loop.
+    * `checkpoints/`: Models systematically dumped at specific intervals natively.
+    * `mario_ppo_final.zip`: The ultimate structurally finalized agent architecture weights natively.
+    * `evaluation_run.mp4`: A rendered visual tracing mathematical inference natively natively.
+    * `progress_montage.mp4`: Comparison videos showing step-by-step intelligence maturation visually explicitly tracking.
+    * `reward_curve.png`: Plotted static graphic metrics formally structurally.

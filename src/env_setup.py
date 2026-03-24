@@ -41,13 +41,60 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
-        noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
+        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
         obs = None
         for _ in range(noops):
             obs, _, done, _ = self.env.step(0) # 0 is NOOP in SIMPLE_MOVEMENT
             if done:
                 obs = self.env.reset(**kwargs)
         return obs
+
+class SkipFrame(gym.Wrapper):
+    """
+    Returns only every `skip`-th frame. Repeats the action and accumulates reward across the skipped frames.
+    Massively improves temporal memory resolution and speeds up gradient convergence explicitly.
+    """
+    def __init__(self, env, skip=4):
+        super(SkipFrame, self).__init__(env)
+        self._skip = skip
+
+    def step(self, action):
+        total_reward = 0.0
+        done = False
+        for _ in range(self._skip):
+            obs, reward, done, info = self.env.step(action)
+            total_reward += reward
+            if done:
+                break
+        return obs, total_reward, done, info
+
+class EpisodicLifeEnv(gym.Wrapper):
+    """
+    Makes a loss of a life effectively the end of a training episode.
+    Crucial for PPO on Mario, otherwise the agent teleports back to the start without a formal 'done' flag, breaking temporal continuity.
+    """
+    def __init__(self, env):
+        super(EpisodicLifeEnv, self).__init__(env)
+        self.lives = 0
+        self.was_real_done = True
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        self.was_real_done = done
+        lives = info.get('life', 0)
+        if self.lives > lives > 0:
+            done = True
+        self.lives = lives
+        return obs, reward, done, info
+        
+    def reset(self, **kwargs):
+        if self.was_real_done:
+            obs = self.env.reset(**kwargs)
+        else:
+            obs, _, _, _ = self.env.step(0)
+        self.lives = 3
+        return obs
+
 
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1, use_custom_reward=False, use_noop=False):
     """
@@ -61,6 +108,9 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1, use_custom_re
             if use_noop:
                 env = NoopResetEnv(env)
             env = JoypadSpace(env, SIMPLE_MOVEMENT)
+            env = EpisodicLifeEnv(env)
+            env = SkipFrame(env, skip=4)
+
             if use_custom_reward:
                 env = CustomRewardWrapper(env)
             env = GrayScaleObservation(env, keep_dim=True)

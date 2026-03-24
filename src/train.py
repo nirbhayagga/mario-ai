@@ -16,15 +16,18 @@ def parse_training_arguments():
     parser = argparse.ArgumentParser(description="PPO Mario Training Execution Argument Parser")
     parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"], help="Explicit hardware tensor processing device selection.")
     parser.add_argument("--total_timesteps", type=int, default=1000000, help="The total maximum quantity of mathematical environment steps.")
-    parser.add_argument("--learning_rate", type=float, default=0.0001, help="The optimizer sequential learning rate.")
-    parser.add_argument("--batch_size", type=int, default=512, help="The absolute batch size utilized per network update phase.")
-    parser.add_argument("--n_steps", type=int, default=512, help="The exact number of operational sequential steps to accumulate before triggering gradient updates.")
-    parser.add_argument("--tensorboard_log", type=str, default="./tensorboard_logs/", help="The formal exact directory path specifically securely capturing analytical tf log files.")
-    parser.add_argument("--n_envs", type=int, default=1, help="Number of parallel environments to run.")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="The optimizer sequential learning rate.")
+    parser.add_argument("--batch_size", type=int, default=64, help="The absolute batch size utilized per network update phase.")
+    parser.add_argument("--n_steps", type=int, default=2048, help="The exact number of operational sequential steps to accumulate before triggering gradient updates.")
+    parser.add_argument("--ent_coef", type=float, default=0.01, help="Entropy coefficient for exploration.")
+    parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor calculating future reward persistence.")
+    parser.add_argument("--vf_coef", type=float, default=0.5, help="Value function coefficient balancing actor-critic loss.")
+    parser.add_argument("--n_envs", type=int, default=4, help="Number of parallel environments to run.")
     parser.add_argument("--load_model", type=str, default=None, help="Path to a pre-trained model to resume training from.")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     parser.add_argument("--use_custom_reward", action="store_true", help="Enable advanced reward shaping.")
     parser.add_argument("--lr_schedule", action="store_true", help="Enable linear learning rate annealing.")
+    parser.add_argument("--output_dir", type=str, default="./runs/default_run", help="Base directory for saving models, checkpoints, and logs.")
     return parser.parse_args()
 
 def linear_schedule(initial_value):
@@ -59,10 +62,15 @@ def execute_training_routine():
         use_noop=args.use_custom_reward # Use noop when custom rewards are enabled
     )
     
+    import os
+    os.makedirs(args.output_dir, exist_ok=True)
+    tb_log = os.path.join(args.output_dir, "tensorboard")
+    ckpt_dir = os.path.join(args.output_dir, "checkpoints")
+
     # Define an atomic checkpoint callback system formally explicitly mapped to logically dump secure network weights periodically
     checkpoint_callback = CheckpointCallback(
         save_freq=100000, 
-        save_path='./checkpoint_models/', 
+        save_path=ckpt_dir, 
         name_prefix='mario_ppo_agent'
     )
     
@@ -73,7 +81,7 @@ def execute_training_routine():
             args.load_model, 
             env=environment_instance, 
             device=args.device,
-            tensorboard_log=args.tensorboard_log
+            tensorboard_log=tb_log
         )
     else:
         print("Initializing specifically targeted new neural weight matrices natively.")
@@ -89,9 +97,14 @@ def execute_training_routine():
             learning_rate=lr,
             n_steps=args.n_steps,
             batch_size=args.batch_size,
+            n_epochs=10,
+            ent_coef=args.ent_coef,
+            gamma=args.gamma,
+            vf_coef=args.vf_coef,
+            max_grad_norm=0.5,
             device=args.device,
             verbose=1,
-            tensorboard_log=args.tensorboard_log
+            tensorboard_log=tb_log
         )
     
     # Execute exactly the secure learning mathematical loop formally invoking the specific Rich progress bar matrices comprehensively mathematically
@@ -99,7 +112,7 @@ def execute_training_routine():
     neural_network_model.learn(total_timesteps=args.total_timesteps, callback=checkpoint_callback, progress_bar=True)
     
     # Natively explicitly force formal serialized saving immediately after exactly terminating the stepping array structurally securely
-    final_save_path = "./mario_ppo_final"
+    final_save_path = os.path.join(args.output_dir, "mario_ppo_final")
     neural_network_model.save(final_save_path)
     print(f"Formal analytical training loop phase concluded perfectly securely serializing output explicitly specifically to {final_save_path}")
 

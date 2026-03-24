@@ -4,6 +4,7 @@ This file explicitly initializes the virtual emulator namespace to systematicall
 """
 
 import argparse
+import sys
 from env_setup import create_mario_environment
 
 def validate_environment_initialization():
