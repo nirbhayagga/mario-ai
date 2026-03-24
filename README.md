@@ -137,8 +137,73 @@ python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 10
   ```
 * **Competition**: Compete against the trained agent natively directly utilizing the `mario_ppo_final` weights specific to the level logic natively.
   ```bash
-  python run_pipeline.py --mode compete --level 1-1 --model_path runs/1-1_2000000steps/mario_ppo_final.zip
-  ```
+  ---
+
+## Research Log & Training Results
+
+Use this section to document and initiate your high-performance training runs. Each log entry includes the optimized command for your i9-13900K / RTX 4080 setup.
+
+### 📝 1. Single-Level Speedrun (Mastering 1-1)
+*   **Goal**: Achieve expert-level performance on World 1-1 as quickly as possible using high parallelism.
+*   **Command**:
+    ```bash
+    python run_pipeline.py --mode train --level 1-1 --total_timesteps 5000000 --n_envs 24 --use_custom_reward --lr_schedule
+    ```
+*   **Status**: [Pending / Completed]
+*   **Visual Results**:
+    - ![Reward Curve](runs/[run_id]/reward_curve.png)
+    - ![Evaluation Video](runs/[run_id]/evaluation_run.mp4)
+*   **Metrics**:
+    | Mean Reward | Episode Length | Success Rate |
+    | :--- | :--- | :--- |
+    | [Value] | [Value] | [%] |
+
+### 📝 2. General Intelligence Mastery (Multi-Level)
+*   **Goal**: Build a robust agent that generalizes across 5 diverse environments (Overworld, Underground, Water, Castle).
+*   **Command**:
+    ```bash
+    python run_pipeline.py --mode train_general --total_timesteps 25000000 --n_envs 20 --use_custom_reward --lr_schedule
+    ```
+*   **Status**: [Pending / Completed]
+*   **Visual Results**:
+    - ![Reward Curve](runs/[run_id]/reward_curve.png)
+    - ![Evaluation Video](runs/[run_id]/evaluation_run.mp4)
+*   **Metrics**:
+    | Mean Reward | Episode Length | Success Rate |
+    | :--- | :--- | :--- |
+    | [Value] | [Value] | [%] |
+
+### 📝 3. World 1 Conqueror (Curated Sequence)
+*   **Goal**: Master the entire first world (1-1 through 1-4) in sequence with balanced parallelism.
+*   **Command**:
+    ```bash
+    python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 --total_timesteps 15000000 --n_envs 16 --use_custom_reward --lr_schedule
+    ```
+*   **Status**: [Pending / Completed]
+*   **Visual Results**:
+    - ![Reward Curve](runs/[run_id]/reward_curve.png)
+    - ![Evaluation Video](runs/[run_id]/evaluation_run.mp4)
+*   **Metrics**:
+    | Mean Reward | Episode Length | Success Rate |
+    | :--- | :--- | :--- |
+    | [Value] | [Value] | [%] |
+
+### 📝 4. Continuous Fine-Tuning (Resume Mode)
+*   **Goal**: Refine an existing model or overcome a learning plateau on a specific level.
+*   **Command**:
+    ```bash
+    python run_pipeline.py --mode train --level 1-1 --total_timesteps 5000000 --n_envs 24 --load_model runs/1-1_5000000steps_rew_lr/checkpoints/mario_ppo_agent_5000000_steps.zip --use_custom_reward --lr_schedule
+    ```
+*   **Status**: [Pending / Completed]
+*   **Visual Results**:
+    - ![Reward Curve](runs/[run_id]/reward_curve.png)
+    - ![Evaluation Video](runs/[run_id]/evaluation_run.mp4)
+*   **Metrics**:
+    | Mean Reward | Episode Length | Success Rate |
+    | :--- | :--- | :--- |
+    | [Value] | [Value] | [%] |
+
+    | [Value] | [Value] | [%] |
 
 ---
 

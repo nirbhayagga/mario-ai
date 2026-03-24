@@ -71,28 +71,26 @@ class SkipFrame(gym.Wrapper):
 class EpisodicLifeEnv(gym.Wrapper):
     """
     Makes a loss of a life effectively the end of a training episode.
-    Crucial for PPO on Mario, otherwise the agent teleports back to the start without a formal 'done' flag, breaking temporal continuity.
+    When Mario dies, the episode terminates and forces a complete level reset.
+    This maintains perfect Markov Decision Process continuity and skips the long death animations.
     """
     def __init__(self, env):
         super(EpisodicLifeEnv, self).__init__(env)
         self.lives = 0
-        self.was_real_done = True
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-        self.was_real_done = done
         lives = info.get('life', 0)
+        # If lives decreased, force an absolute terminal state
         if self.lives > lives > 0:
             done = True
         self.lives = lives
         return obs, reward, done, info
         
     def reset(self, **kwargs):
-        if self.was_real_done:
-            obs = self.env.reset(**kwargs)
-        else:
-            obs, _, _, _ = self.env.step(0)
-        self.lives = 3
+        # Always perform a full hard emulator reset to guarantee clean environment initialization
+        obs = self.env.reset(**kwargs)
+        self.lives = 3  # Mario always resets to 3 lives natively
         return obs
 
 
