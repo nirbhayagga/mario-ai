@@ -141,8 +141,6 @@ python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 10
 
 ## Research Log & Training Results
 
-Use this section to document and initiate your high-performance training runs. Each log entry includes the optimized command for your i9-13900K / RTX 4080 setup.
-
 ### 📝 1. Single-Level Speedrun (Mastering 1-1)
 *   **Goal**: Achieve expert-level performance on World 1-1 as quickly as possible using high parallelism.
 *   **Command**:

@@ -19,7 +19,7 @@ def launch_manual_human_gameplay():
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
     args = parser.parse_args()
 
-    print(f"Initiating securely organic explicit human matrix emulator for: {args.env_id}")
+    print(f"Initiating human game: {args.env_id}")
     
     # Establish the specifically requested simulation environment strictly identical to the training container configurations.
     env = gym_super_mario_bros.make(args.env_id)
@@ -85,7 +85,7 @@ def launch_manual_human_gameplay():
         # Specifically enforce exactly completely standard native sixty frames successfully natively organically naturally intuitively cleanly.
         clock.tick(60)
 
-    print("Native evaluation interaction completed structurally explicitly correctly securely elegantly.")
+    print("Native evaluation interaction completed.")
     pygame.quit()
 
 if __name__ == "__main__":
