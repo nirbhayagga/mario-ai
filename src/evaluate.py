@@ -1,99 +1,113 @@
 """
-Evaluation and Rendering Logic Module
-This explicitly loads serialized algorithm weights and strictly outputs validation via manual mathematical OpenCV frame painting.
+Evaluation and Video Export Module
+Loads trained model weights and renders a gameplay video with metadata overlay.
 """
 
 import argparse
 import cv2
-from env_setup import create_mario_environment
-from stable_baselines3 import PPO
 import numpy as np
+import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from nes_py.wrappers import JoypadSpace
+from stable_baselines3 import PPO
+from env_setup import create_mario_environment
+
 
 def parse_evaluation_arguments():
-    """
-    Constructs explicit definitions for parsing the evaluation string criteria.
-    """
-    parser = argparse.ArgumentParser(description="PPO Mario Execution Output Parser")
-    parser.add_argument("--model_path", type=str, default="mario_ppo_final.zip", help="The absolute string location of the specific serialized neural weights.")
-    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"], help="Hardware operational string selector.")
-    parser.add_argument("--video_output", type=str, default="evaluation_run.mp4", help="String path destination specifically for the explicitly exported analytical mp4 video format.")
-    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0", help="The Gym environment ID.")
+    parser = argparse.ArgumentParser(description="PPO Mario Evaluation")
+    parser.add_argument("--model_path", type=str, default="mario_ppo_final.zip",
+                        help="Path to the serialized model weights.")
+    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"],
+                        help="Hardware device for inference.")
+    parser.add_argument("--video_output", type=str, default="evaluation_run.mp4",
+                        help="Output path for the evaluation video.")
+    parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
+                        help="The Gym environment ID.")
     return parser.parse_args()
+
 
 def export_evaluation_video():
     """
-    Main execution loop specifically tasked with loading models, intercepting natively rendered tensors, mapping data overlays, and specifically writing frames into an mp4 format stream.
+    Loads the trained model, runs one full episode through the vectorized
+    environment (for correct observation shape), and renders video frames
+    from a separate unwrapped environment to avoid frame-skip artifacts.
     """
-    
     args = parse_evaluation_arguments()
-    
-    # Detect if we are using multi-level training (comma-separated list)
-    if "," in args.env_id:
-        target_envs = [e.strip() for e in args.env_id.split(",")]
-    else:
-        target_envs = args.env_id
 
-    # Explicitly recreate the exact wrapper sequence natively required to ensure input shape matching
-    env = create_mario_environment(env_id=target_envs)
-    
-    # Load the specific serialized weights into exactly the identical PPO framework
-    model_instance = PPO.load(args.model_path, device=args.device)
-    
-    # Initialize the specific temporal environment step sequence
-    observation = env.reset()
-    
-    # Prepare the specific VideoWriter system using standard MP4V analytical encoders
+    # Use the first level if comma-separated list was passed
+    if "," in args.env_id:
+        target_env = [e.strip() for e in args.env_id.split(",")][0]
+    else:
+        target_env = args.env_id
+
+    # Create the vectorized env for model inference (must match training shape)
+    vec_env = create_mario_environment(env_id=target_env)
+
+    # Create a separate raw env for clean video rendering (no frame skip, no grayscale)
+    render_env = gym_super_mario_bros.make(target_env)
+    render_env = JoypadSpace(render_env, SIMPLE_MOVEMENT)
+
+    model = PPO.load(args.model_path, device=args.device)
+
+    # Reset both environments
+    obs = vec_env.reset()
+    render_env.reset()
+
+    # Video writer at native NES resolution and 30 FPS for smooth playback
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    
-    # Establish explicit rendering constraints mapping exactly to standard NES screen resolutions Native 240x256 dimensions
-    video_writer = cv2.VideoWriter(args.video_output, fourcc, 15.0, (256, 240))
-    
-    total_running_reward = 0
-    done = False
-    
-    print(f"Beginning analytical render specifically tracking outputs directly to {args.video_output}")
-    
-    while not done:
-        # Utilize the network weights specifically to infer the optimal operational action
-        action, _states = model_instance.predict(observation, deterministic=True)
-        
-        # Sequentially map the selected output mathematically into the raw emulator namespace
-        observation, reward, done, info = env.step(action)
-        
-        # Maintain cumulative mathematical evaluation tracking
-        total_running_reward += int(reward[0])
-        
-        # Explicitly extract the specifically rendered spatial visual core utilizing precisely the original environment layer
-        # By bypassing the vectorized framework layers iteratively, we extract strictly the RGB values
-        rendered_layer = env.envs[0].render(mode='rgb_array')
-        
-        # OpenCV naturally structures arrays inside BGR logic; thus we explicitly reverse the generated RGB dimensions
-        bgr_frame = cv2.cvtColor(rendered_layer, cv2.COLOR_RGB2BGR)
-        
-        # Extract native metadata dictionaries structurally generated by the internal simulation logic
-        x_position_int = int(info[0].get('x_pos', 0))
-        internal_score_int = int(info[0].get('score', 0))
-        
-        # Convert exact structural integer mappings correctly to readable operational strings mapping simple movement constraints
-        action_name_string = "UNKNOWN"
-        if int(action[0]) < len(SIMPLE_MOVEMENT):
-            action_name_string = str(SIMPLE_MOVEMENT[int(action[0])])
-            
-        # Draw explicit metadata strings directly overlaid onto fundamentally spatial array structures
-        # cv2.putText syntax uses string formatting strictly injected at pixel location coordinates
-        cv2.putText(bgr_frame, f"X Pos: {x_position_int}", (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(bgr_frame, f"Score: {internal_score_int}", (5, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1, cv2.LINE_AA)
-        cv2.putText(bgr_frame, f"Action: {action_name_string}", (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
-        
-        # Strictly append fundamentally mapped bgr format structures sequentially into mp4 container arrays
+    video_writer = cv2.VideoWriter(args.video_output, fourcc, 30.0, (256, 240))
+
+    total_reward = 0
+    episode_done = False
+
+    print(f"Recording evaluation to {args.video_output}")
+
+    while not episode_done:
+        # Get action from the model using the vectorized observation
+        action, _ = model.predict(obs, deterministic=True)
+
+        # Step both environments with the same action
+        obs, reward, done, info = vec_env.step(action)
+        action_int = int(action[0])
+
+        # Step the render env 4 times to match the SkipFrame(4) wrapper
+        for _ in range(4):
+            render_obs, _, render_done, render_info = render_env.step(action_int)
+            if render_done:
+                render_env.reset()
+                break
+
+        total_reward += float(reward[0])
+
+        # Render the clean frame from the unwrapped environment
+        rendered_frame = render_env.render(mode='rgb_array')
+        bgr_frame = cv2.cvtColor(rendered_frame, cv2.COLOR_RGB2BGR)
+
+        # Extract metadata for overlay
+        x_pos = int(info[0].get('x_pos', 0))
+        score = int(info[0].get('score', 0))
+        action_name = str(SIMPLE_MOVEMENT[action_int]) if action_int < len(SIMPLE_MOVEMENT) else "UNKNOWN"
+
+        # Draw overlay text
+        cv2.putText(bgr_frame, f"X: {x_pos}", (5, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(bgr_frame, f"Score: {score}", (5, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(bgr_frame, f"Action: {action_name}", (5, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+
         video_writer.write(bgr_frame)
-        
-    print(f"Recording analytical tracking completed. Total Evaluation Mathematical Reward Mapping: {total_running_reward}")
-    
-    # Properly manually terminate OpenCV file manipulation streams specifically
+
+        # Check done from the vectorized env (returns array)
+        episode_done = bool(done[0])
+
+    print(f"Evaluation complete. Total reward: {total_reward:.0f}")
+
     video_writer.release()
+    render_env.close()
+    vec_env.close()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     export_evaluation_video()
