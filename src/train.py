@@ -29,6 +29,10 @@ def parse_training_arguments():
                         help="Discount factor for future rewards.")
     parser.add_argument("--vf_coef", type=float, default=0.5,
                         help="Value function loss coefficient.")
+    parser.add_argument("--n_epochs", type=int, default=10,
+                        help="Number of PPO optimization epochs per rollout.")
+    parser.add_argument("--save_freq", type=int, default=50000,
+                        help="Checkpoint save frequency (in vectorized env steps).")
     parser.add_argument("--n_envs", type=int, default=4,
                         help="Number of parallel environments.")
     parser.add_argument("--load_model", type=str, default=None,
@@ -76,10 +80,14 @@ def execute_training():
     ckpt_dir = os.path.join(args.output_dir, "checkpoints")
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=100000,
+        save_freq=args.save_freq,
         save_path=ckpt_dir,
         name_prefix='mario_ppo_agent',
     )
+
+    lr = args.learning_rate
+    if args.lr_schedule:
+        lr = linear_schedule(args.learning_rate)
 
     if args.load_model:
         print(f"Resuming from: {args.load_model}")
@@ -89,12 +97,10 @@ def execute_training():
             device=args.device,
             tensorboard_log=tb_log,
         )
+        # Apply current LR settings to the resumed model
+        model.learning_rate = lr
     else:
         print("Initializing new PPO model.")
-
-        lr = args.learning_rate
-        if args.lr_schedule:
-            lr = linear_schedule(args.learning_rate)
 
         model = PPO(
             policy="CnnPolicy",
@@ -102,7 +108,7 @@ def execute_training():
             learning_rate=lr,
             n_steps=args.n_steps,
             batch_size=args.batch_size,
-            n_epochs=10,
+            n_epochs=args.n_epochs,
             ent_coef=args.ent_coef,
             gamma=args.gamma,
             vf_coef=args.vf_coef,

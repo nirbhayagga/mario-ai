@@ -3,7 +3,8 @@ AI vs Human Competition Module
 Runs a human play session followed by an AI evaluation for comparison.
 """
 
-import os
+import subprocess
+import sys
 import time
 import argparse
 
@@ -19,14 +20,17 @@ def execute_competition_mode():
     print(f"Competition mode: {args.env_id}")
     print("PLAYER 1 (HUMAN): Get ready!")
     time.sleep(2)
-    os.system(f"python src/manual_play.py --env_id {args.env_id}")
+    subprocess.run(
+        [sys.executable, "src/manual_play.py", "--env_id", args.env_id],
+        check=True,
+    )
 
     print("PLAYER 2 (AI): Running evaluation...")
     time.sleep(2)
-    eval_cmd = f"python src/evaluate.py --env_id {args.env_id}"
+    eval_cmd = [sys.executable, "src/evaluate.py", "--env_id", args.env_id]
     if args.model_path:
-        eval_cmd += f" --model_path {args.model_path}"
-    os.system(eval_cmd)
+        eval_cmd += ["--model_path", args.model_path]
+    subprocess.run(eval_cmd, check=True)
 
     print("Competition complete.")
 

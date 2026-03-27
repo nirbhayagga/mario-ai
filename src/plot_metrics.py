@@ -41,8 +41,9 @@ def plot_reward_curve(log_dir, output_path):
     if target_tag not in tags:
         # Fallback to any scalar if target not found
         if tags:
-            target_tag = tags[0]
-            print(f"'{target_tag}' not found. Falling back to '{target_tag}'.")
+            fallback = tags[0]
+            print(f"'{target_tag}' not found. Falling back to '{fallback}'.")
+            target_tag = fallback
         else:
             print("No scalar tags found in logs.")
             return

@@ -23,6 +23,8 @@ def parse_evaluation_arguments():
                         help="Output path for the evaluation video.")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
                         help="The Gym environment ID.")
+    parser.add_argument("--max_steps", type=int, default=3000,
+                        help="Maximum evaluation steps (stops earlier on level clear).")
     return parser.parse_args()
 
 
@@ -58,34 +60,34 @@ def export_evaluation_video():
     video_writer = cv2.VideoWriter(args.video_output, fourcc, 30.0, (256, 240))
 
     total_reward = 0
-    episode_done = False
+    max_steps = args.max_steps
 
-    print(f"Recording evaluation to {args.video_output}")
+    print(f"Recording evaluation to {args.video_output} (max {max_steps} steps)")
 
-    while not episode_done:
+    for step in range(max_steps):
         # Get action from the model using the vectorized observation
         action, _ = model.predict(obs, deterministic=True)
 
-        # Step both environments with the same action
+        # Step the vectorized env (auto-resets on done)
         obs, reward, done, info = vec_env.step(action)
         action_int = int(action[0])
+        total_reward += float(reward[0])
 
         # Step the render env 4 times to match the SkipFrame(4) wrapper
+        render_info = {}
+        render_done = False
         for _ in range(4):
-            render_obs, _, render_done, render_info = render_env.step(action_int)
+            _, _, render_done, render_info = render_env.step(action_int)
             if render_done:
-                render_env.reset()
                 break
-
-        total_reward += float(reward[0])
 
         # Render the clean frame from the unwrapped environment
         rendered_frame = render_env.render(mode='rgb_array')
         bgr_frame = cv2.cvtColor(rendered_frame, cv2.COLOR_RGB2BGR)
 
-        # Extract metadata for overlay
-        x_pos = int(info[0].get('x_pos', 0))
-        score = int(info[0].get('score', 0))
+        # Extract metadata from render env (in sync with displayed frame)
+        x_pos = int(render_info.get('x_pos', 0))
+        score = int(render_info.get('score', 0))
         action_name = str(SIMPLE_MOVEMENT[action_int]) if action_int < len(SIMPLE_MOVEMENT) else "UNKNOWN"
 
         # Draw overlay text
@@ -95,13 +97,21 @@ def export_evaluation_video():
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1, cv2.LINE_AA)
         cv2.putText(bgr_frame, f"Action: {action_name}", (5, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.putText(bgr_frame, f"Reward: {total_reward:.0f}", (5, 65),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
 
         video_writer.write(bgr_frame)
 
-        # Check done from the vectorized env (returns array)
-        episode_done = bool(done[0])
+        # Stop on level clear
+        if render_info.get('flag_get', False):
+            print(f"Level cleared at step {step + 1}!")
+            break
 
-    print(f"Evaluation complete. Total reward: {total_reward:.0f}")
+        # Reset render env on death to stay in sync with vec_env (which auto-resets)
+        if render_done:
+            render_env.reset()
+
+    print(f"Evaluation complete. Total reward: {total_reward:.0f} ({step + 1} steps)")
 
     video_writer.release()
     render_env.close()

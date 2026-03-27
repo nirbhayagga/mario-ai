@@ -119,8 +119,10 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
         return _init
 
     if isinstance(env_id, list):
-        print(f"Creating multi-level environment: {env_id}")
-        env = SubprocVecEnv([make_env(eid) for eid in env_id])
+        # Cycle levels across n_envs so each level gets balanced coverage
+        actual_n = max(n_envs, len(env_id))
+        print(f"Creating multi-level environment: {env_id} ({actual_n} envs)")
+        env = SubprocVecEnv([make_env(env_id[i % len(env_id)]) for i in range(actual_n)])
     elif n_envs > 1:
         env = SubprocVecEnv([make_env(env_id) for _ in range(n_envs)])
     else:
