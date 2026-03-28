@@ -47,7 +47,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--model_path` | none | Model for evaluation. |
 | `--checkpoint_dir` | none | Directory containing checkpoints for montage visualization. |
 | `--video_output` | none | Destination path for exported `.mp4` video files. |
-| `--save_freq` | `50000` | Checkpoint save frequency (in vectorized env steps). |
+| `--save_freq` | auto | Checkpoint save frequency. Auto-computed for ~15 checkpoints if not set. |
 | `--n_epochs` | `10` | Number of PPO optimization epochs per rollout. |
 | `--max_steps` | `3000` | Maximum evaluation steps (stops earlier on level clear). |
 

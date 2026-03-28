@@ -48,20 +48,18 @@ def create_montage_video(checkpoint_dir, output_path,
     video_writer = cv2.VideoWriter(output_path, fourcc, 30.0, (out_w, out_h))
 
     observations = [env.reset() for env in envs]
-    dones = [False] * num_models
 
     print(f"Generating montage: {output_path} ({num_steps} steps)...")
 
     for i in range(num_steps):
         frames = []
         for j in range(num_models):
-            if not dones[j]:
-                action, _ = models[j].predict(observations[j], deterministic=True)
-                observations[j], _, done_arr, _ = envs[j].step(action)
-                if bool(done_arr[0]):
-                    observations[j] = envs[j].reset()
+            action, _ = models[j].predict(observations[j], deterministic=True)
+            observations[j], _, done_arr, _ = envs[j].step(action)
+            if bool(done_arr[0]):
+                observations[j] = envs[j].reset()
 
-            rgb_frame = envs[j].envs[0].render(mode='rgb_array')
+            rgb_frame = envs[j].venv.envs[0].render(mode='rgb_array')
             bgr_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
 
             cv2.putText(bgr_frame, names[j], (5, 20),

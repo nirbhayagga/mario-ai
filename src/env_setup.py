@@ -8,7 +8,7 @@ import gym
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from nes_py.wrappers import JoypadSpace
-from gym.wrappers import GrayScaleObservation, ResizeObservation, FrameStack
+from gym.wrappers import GrayScaleObservation, ResizeObservation
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
 
 
@@ -21,10 +21,10 @@ class CustomRewardWrapper(gym.Wrapper):
     def step(self, action):
         state, reward, done, info = self.env.step(action)
 
-        if info['flag_get']:
+        if info.get('flag_get', False):
             reward += 500
 
-        if done and not info['flag_get']:
+        if done and not info.get('flag_get', False):
             reward -= 50
 
         return state, reward, done, info

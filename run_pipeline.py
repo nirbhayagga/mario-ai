@@ -36,9 +36,10 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
         "--n_envs", str(n_envs_override or args.n_envs),
         "--env_id", env_id,
         "--output_dir", output_dir,
-        "--save_freq", str(args.save_freq),
         "--n_epochs", str(args.n_epochs),
     ]
+    if args.save_freq is not None:
+        cmd += ["--save_freq", str(args.save_freq)]
     if args.load_model:
         cmd += ["--load_model", args.load_model]
     if args.use_custom_reward:
@@ -85,8 +86,8 @@ def main():
                         help="Directory containing checkpoints for montage visualization.")
     parser.add_argument("--video_output", type=str, default=None,
                         help="Destination path for exported .mp4 video files.")
-    parser.add_argument("--save_freq", type=int, default=50000,
-                        help="Checkpoint save frequency (in vectorized env steps).")
+    parser.add_argument("--save_freq", type=int, default=None,
+                        help="Checkpoint save frequency. Auto-computed for ~15 checkpoints if not set.")
     parser.add_argument("--n_epochs", type=int, default=10,
                         help="Number of PPO optimization epochs per rollout.")
     parser.add_argument("--max_steps", type=int, default=3000,

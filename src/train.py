@@ -31,8 +31,8 @@ def parse_training_arguments():
                         help="Value function loss coefficient.")
     parser.add_argument("--n_epochs", type=int, default=10,
                         help="Number of PPO optimization epochs per rollout.")
-    parser.add_argument("--save_freq", type=int, default=50000,
-                        help="Checkpoint save frequency (in vectorized env steps).")
+    parser.add_argument("--save_freq", type=int, default=None,
+                        help="Checkpoint save frequency. Auto-computed for ~15 checkpoints if not set.")
     parser.add_argument("--n_envs", type=int, default=4,
                         help="Number of parallel environments.")
     parser.add_argument("--load_model", type=str, default=None,
@@ -79,8 +79,16 @@ def execute_training():
     tb_log = os.path.join(args.output_dir, "tensorboard")
     ckpt_dir = os.path.join(args.output_dir, "checkpoints")
 
+    # Auto-compute save frequency to get ~15 checkpoints per run
+    if args.save_freq is not None:
+        save_freq = args.save_freq
+    else:
+        total_env_steps = args.total_timesteps // max(args.n_envs, 1)
+        save_freq = max(10000, total_env_steps // 15)
+    print(f"Checkpoint frequency: every {save_freq} env steps (~{args.total_timesteps // (max(args.n_envs, 1) * save_freq)} checkpoints)")
+
     checkpoint_callback = CheckpointCallback(
-        save_freq=args.save_freq,
+        save_freq=save_freq,
         save_path=ckpt_dir,
         name_prefix='mario_ppo_agent',
     )

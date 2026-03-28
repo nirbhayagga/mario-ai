@@ -1,14 +1,12 @@
 """
 Evaluation and Video Export Module
 Loads trained model weights and renders a gameplay video with metadata overlay.
+Uses a single environment for both inference and rendering to avoid desync.
 """
 
 import argparse
 import cv2
-import numpy as np
-import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
-from nes_py.wrappers import JoypadSpace
 from stable_baselines3 import PPO
 from env_setup import create_mario_environment
 
@@ -30,9 +28,11 @@ def parse_evaluation_arguments():
 
 def export_evaluation_video():
     """
-    Loads the trained model, runs one full episode through the vectorized
-    environment (for correct observation shape), and renders video frames
-    from a separate unwrapped environment to avoid frame-skip artifacts.
+    Loads the trained model and records a gameplay video. Uses the same
+    vectorized environment for both model inference and rendering - render()
+    passes through all observation wrappers to the base NES env, giving us
+    full-color 256x240 frames that are perfectly in sync with the model's
+    observations.
     """
     args = parse_evaluation_arguments()
 
@@ -42,55 +42,43 @@ def export_evaluation_video():
     else:
         target_env = args.env_id
 
-    # Create the vectorized env for model inference (must match training shape)
+    # Single env for both inference and rendering (n_envs=1 -> DummyVecEnv)
     vec_env = create_mario_environment(env_id=target_env)
-
-    # Create a separate raw env for clean video rendering (no frame skip, no grayscale)
-    render_env = gym_super_mario_bros.make(target_env)
-    render_env = JoypadSpace(render_env, SIMPLE_MOVEMENT)
-
     model = PPO.load(args.model_path, device=args.device)
 
-    # Reset both environments
     obs = vec_env.reset()
-    render_env.reset()
 
-    # Video writer at native NES resolution and 30 FPS for smooth playback
+    # Access the inner gym env for full-color rendering.
+    # VecFrameStack.venv -> DummyVecEnv, .envs[0] -> wrapped gym env.
+    # render() passes through all wrappers (GrayScale, Resize, etc.) to the
+    # base NES env, returning a clean 256x240 RGB frame.
+    inner_env = vec_env.venv.envs[0]
+
+    # Video writer at native NES resolution and 30 FPS
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video_writer = cv2.VideoWriter(args.video_output, fourcc, 30.0, (256, 240))
 
     total_reward = 0
     max_steps = args.max_steps
+    step = 0
 
     print(f"Recording evaluation to {args.video_output} (max {max_steps} steps)")
 
     for step in range(max_steps):
-        # Get action from the model using the vectorized observation
         action, _ = model.predict(obs, deterministic=True)
-
-        # Step the vectorized env (auto-resets on done)
         obs, reward, done, info = vec_env.step(action)
         action_int = int(action[0])
         total_reward += float(reward[0])
 
-        # Step the render env 4 times to match the SkipFrame(4) wrapper
-        render_info = {}
-        render_done = False
-        for _ in range(4):
-            _, _, render_done, render_info = render_env.step(action_int)
-            if render_done:
-                break
-
-        # Render the clean frame from the unwrapped environment
-        rendered_frame = render_env.render(mode='rgb_array')
+        # Render full-color frame from the base NES env (same env the model sees)
+        rendered_frame = inner_env.render(mode='rgb_array')
         bgr_frame = cv2.cvtColor(rendered_frame, cv2.COLOR_RGB2BGR)
 
-        # Extract metadata from render env (in sync with displayed frame)
-        x_pos = int(render_info.get('x_pos', 0))
-        score = int(render_info.get('score', 0))
+        # Overlay metadata from the env's info dict (perfectly in sync)
+        x_pos = int(info[0].get('x_pos', 0))
+        score = int(info[0].get('score', 0))
         action_name = str(SIMPLE_MOVEMENT[action_int]) if action_int < len(SIMPLE_MOVEMENT) else "UNKNOWN"
 
-        # Draw overlay text
         cv2.putText(bgr_frame, f"X: {x_pos}", (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(bgr_frame, f"Score: {score}", (5, 35),
@@ -103,18 +91,15 @@ def export_evaluation_video():
         video_writer.write(bgr_frame)
 
         # Stop on level clear
-        if render_info.get('flag_get', False):
+        if info[0].get('flag_get', False):
             print(f"Level cleared at step {step + 1}!")
             break
 
-        # Reset render env on death to stay in sync with vec_env (which auto-resets)
-        if render_done:
-            render_env.reset()
+        # VecEnv auto-resets on done, so the model keeps playing across deaths
 
     print(f"Evaluation complete. Total reward: {total_reward:.0f} ({step + 1} steps)")
 
     video_writer.release()
-    render_env.close()
     vec_env.close()
     cv2.destroyAllWindows()
 
