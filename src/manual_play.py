@@ -6,7 +6,7 @@ Resets automatically on death so the player can keep playing.
 
 import pygame
 import gym_super_mario_bros
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
 from nes_py.wrappers import JoypadSpace
 import argparse
 
@@ -23,7 +23,7 @@ def launch_manual_gameplay():
     print("Close the window or press Escape to quit.")
 
     env = gym_super_mario_bros.make(args.env_id)
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
 
     observation = env.reset()
 
@@ -34,7 +34,7 @@ def launch_manual_gameplay():
     pygame.display.set_caption("Mario - Manual Play")
     clock = pygame.time.Clock()
 
-    # SIMPLE_MOVEMENT action mapping:
+    # COMPLEX_MOVEMENT action mapping:
     #   0: NOOP
     #   1: Right
     #   2: Right + A (jump)
@@ -42,6 +42,11 @@ def launch_manual_gameplay():
     #   4: Right + A + B (sprint jump)
     #   5: A (jump in place)
     #   6: Left
+    #   7: Left + A (jump)
+    #   8: Left + B (sprint)
+    #   9: Left + A + B (sprint jump)
+    #   10: Down (crouch/enter pipe)
+    #   11: Up (climb)
 
     running = True
     while running:
@@ -61,6 +66,9 @@ def launch_manual_gameplay():
         left = keys[pygame.K_LEFT]
         jump = keys[pygame.K_SPACE] or keys[pygame.K_UP]
         sprint = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+        down = keys[pygame.K_a]
+        up = keys[pygame.K_z]
+
 
         if right and jump and sprint:
             action = 4  # Right + Jump + Sprint
@@ -70,10 +78,20 @@ def launch_manual_gameplay():
             action = 3  # Right + Sprint
         elif right:
             action = 1  # Right
+        elif left and jump and sprint:
+            action = 9  # Left + Jump + Sprint
+        elif left and jump:
+            action = 7  # Left + Jump 
+        elif left and sprint:
+            action = 8  # Left + Sprint           
         elif left:
             action = 6  # Left
         elif jump:
             action = 5  # Jump in place
+        elif down:
+            action = 10 # Crouch or enter pipe
+        elif up:
+            action = 11 # Climb
         else:
             action = 0  # NOOP (stand still)
 
