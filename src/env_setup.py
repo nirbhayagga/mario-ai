@@ -91,7 +91,7 @@ class EpisodicLifeEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs = self.env.reset(**kwargs)
-        self.lives = 3
+        self.lives = 0
         return obs
 
 
