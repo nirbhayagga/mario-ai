@@ -39,6 +39,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `train_general`, `manual`, `compete`, `all` |
 | `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
 | `--device` | `cuda` | `cuda` or `cpu`. |
+| `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
 | `--total_timesteps` | `2000000` | Total training steps. |
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
 | `--no_custom_reward` | off | Disables reward shaping (flagpole bonus, death penalty, stuck penalty). Custom rewards are ON by default. |
@@ -80,6 +81,7 @@ python run_pipeline.py --mode train --level 1-1 \
 * **Timesteps**: 2-5M for World 1 levels, 5-10M for harder levels (castles, underwater).
 * **Envs**: 4-8 on a standard GPU, up to 24 if you have the VRAM/CPU cores.
 * **Reward/LR**: Custom rewards and LR schedules are enabled by default for optimal convergence.
+* **Action Space**: Use `--action_space right_only` to reduce the action space from 7 to 5, significantly speeding up training by preventing Mario from walking backward.
 * **Checkpoints**: Default `--save_freq 50000` gives ~10-20 checkpoints for a typical run.
 
 ### Multi-Level Training (e.g. World 1)

@@ -6,7 +6,7 @@ transformations required for PPO training with a CNN policy.
 
 import gym
 import gym_super_mario_bros
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 from nes_py.wrappers import JoypadSpace
 from gym.wrappers import GrayScaleObservation, ResizeObservation
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
@@ -122,7 +122,7 @@ class EpisodicLifeEnv(gym.Wrapper):
 
 
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
-                             use_custom_reward=False, use_noop=False):
+                             use_custom_reward=False, use_noop=False, action_space="simple"):
     """
     Builds the full environment stack: JoypadSpace, EpisodicLife, SkipFrame,
     optional reward shaping, grayscale, resize to 84x84, then VecFrameStack(4).
@@ -134,7 +134,13 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
             env = gym_super_mario_bros.make(target_id)
             if use_noop:
                 env = NoopResetEnv(env)
-            env = JoypadSpace(env, SIMPLE_MOVEMENT)
+            if action_space == "complex":
+                movement = COMPLEX_MOVEMENT
+            elif action_space == "right_only":
+                movement = RIGHT_ONLY
+            else:
+                movement = SIMPLE_MOVEMENT
+            env = JoypadSpace(env, movement)
             env = EpisodicLifeEnv(env)
             env = SkipFrame(env, skip=4)
             if use_custom_reward:

@@ -46,6 +46,7 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
         cmd += ["--no_custom_reward"]
     if args.no_lr_schedule:
         cmd += ["--no_lr_schedule"]
+    cmd += ["--action_space", args.action_space]
     cmd += unknown
     return cmd
 
@@ -76,6 +77,8 @@ def main():
                         help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
     parser.add_argument("--no_lr_schedule", action="store_true",
                         help="DISABLE linear learning rate annealing.")
+    parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
+                        help="Action space to use (simple, complex, or right_only).")
     parser.add_argument("--load_model", type=str, default=None,
                         help="Path to a .zip model to resume training from.")
 
@@ -113,6 +116,8 @@ def main():
         run_id += "_lr"
     if args.load_model:
         run_id += "_resume"
+    if args.action_space != "simple":
+        run_id += f"_{args.action_space}"
 
     output_dir = os.path.join("runs", run_id)
 
@@ -139,6 +144,7 @@ def main():
             "--device", args.device,
             "--env_id", env_id,
             "--max_steps", str(args.max_steps),
+            "--action_space", args.action_space,
         ] + unknown)
 
     elif args.mode == "visualize":
@@ -206,6 +212,7 @@ def main():
             "--device", args.device,
             "--env_id", env_id,
             "--max_steps", str(args.max_steps),
+            "--action_space", args.action_space,
         ] + unknown)
 
         print("\n=== STAGE 4: VISUALIZATION MONTAGE ===")

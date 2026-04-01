@@ -6,7 +6,7 @@ Uses a single environment for both inference and rendering to avoid desync.
 
 import argparse
 import cv2
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 from stable_baselines3 import PPO
 from env_setup import create_mario_environment
 
@@ -23,6 +23,8 @@ def parse_evaluation_arguments():
                         help="The Gym environment ID.")
     parser.add_argument("--max_steps", type=int, default=3000,
                         help="Maximum evaluation steps (stops earlier on level clear).")
+    parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
+                        help="Action space to use (simple, complex, or right_only).")
     return parser.parse_args()
 
 
@@ -43,7 +45,7 @@ def export_evaluation_video():
         target_env = args.env_id
 
     # Single env for both inference and rendering (n_envs=1 -> DummyVecEnv)
-    vec_env = create_mario_environment(env_id=target_env)
+    vec_env = create_mario_environment(env_id=target_env, action_space=args.action_space)
     model = PPO.load(args.model_path, device=args.device)
 
     obs = vec_env.reset()
@@ -77,7 +79,15 @@ def export_evaluation_video():
         # Overlay metadata from the env's info dict (perfectly in sync)
         x_pos = int(info[0].get('x_pos', 0))
         score = int(info[0].get('score', 0))
-        action_name = str(SIMPLE_MOVEMENT[action_int]) if action_int < len(SIMPLE_MOVEMENT) else "UNKNOWN"
+        
+        if args.action_space == "complex":
+            movement = COMPLEX_MOVEMENT
+        elif args.action_space == "right_only":
+            movement = RIGHT_ONLY
+        else:
+            movement = SIMPLE_MOVEMENT
+            
+        action_name = str(movement[action_int]) if action_int < len(movement) else "UNKNOWN"
 
         cv2.putText(bgr_frame, f"X: {x_pos}", (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1, cv2.LINE_AA)

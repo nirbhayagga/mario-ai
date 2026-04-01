@@ -43,6 +43,8 @@ def parse_training_arguments():
                         help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
     parser.add_argument("--no_lr_schedule", action="store_true",
                         help="DISABLE linear learning rate annealing.")
+    parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
+                        help="Action space to use (simple, complex, or right_only).")
     parser.add_argument("--output_dir", type=str, default="./runs/default_run",
                         help="Base directory for models, checkpoints, and logs.")
     return parser.parse_args()
@@ -76,6 +78,7 @@ def execute_training():
         n_envs=args.n_envs,
         use_custom_reward=use_custom_reward,
         use_noop=use_custom_reward,
+        action_space=args.action_space,
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
