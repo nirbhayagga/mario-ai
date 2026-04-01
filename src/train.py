@@ -88,7 +88,9 @@ def execute_training():
     else:
         total_env_steps = args.total_timesteps // max(args.n_envs, 1)
         save_freq = max(10000, total_env_steps // 15)
-    print(f"Checkpoint frequency: every {save_freq} env steps (~{args.total_timesteps // (max(args.n_envs, 1) * save_freq)} checkpoints)")
+        
+    actual_timesteps_per_save = save_freq * max(args.n_envs, 1)
+    print(f"Checkpoint frequency: every {save_freq} env steps ({actual_timesteps_per_save} total timesteps) -> ~15 checkpoints")
 
     checkpoint_callback = CheckpointCallback(
         save_freq=save_freq,
