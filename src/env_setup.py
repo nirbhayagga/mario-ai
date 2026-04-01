@@ -13,10 +13,12 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, Subproc
 
 
 class CustomRewardWrapper(gym.Wrapper):
-    """Reward shaping: bonus for reaching the flagpole, penalty for death."""
+    """Reward shaping: bonus for reaching the flagpole, penalty for death, and stuck penalty."""
 
     def __init__(self, env):
         super(CustomRewardWrapper, self).__init__(env)
+        self.current_x = 0
+        self.x_stuck_frames = 0
 
     def step(self, action):
         state, reward, done, info = self.env.step(action)
@@ -26,8 +28,32 @@ class CustomRewardWrapper(gym.Wrapper):
 
         if done and not info.get('flag_get', False):
             reward -= 50
+            
+        # Penalize for getting stuck (not moving right)
+        x_pos = info.get('x_pos', 0)
+        
+        # If we haven't moved right
+        if x_pos <= self.current_x:
+            self.x_stuck_frames += 1
+        else:
+            self.x_stuck_frames = 0
+            self.current_x = max(self.current_x, x_pos)
+            
+        # If stuck for ~2.5 seconds (20 wrapped frames * 4 skip_frames), apply small penalty
+        if self.x_stuck_frames > 20: 
+            reward -= 1.0 
+            
+        # If stuck for ~10 seconds, end the episode to prevent wasting training time
+        if self.x_stuck_frames > 150:
+            done = True
+            reward -= 20 # Additional penalty for failing to progress
 
         return state, reward, done, info
+        
+    def reset(self, **kwargs):
+        self.current_x = 0
+        self.x_stuck_frames = 0
+        return self.env.reset(**kwargs)
 
 
 class NoopResetEnv(gym.Wrapper):
