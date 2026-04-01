@@ -39,10 +39,10 @@ def parse_training_arguments():
                         help="Path to a pre-trained model to resume from.")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
                         help="The Gym environment ID.")
-    parser.add_argument("--use_custom_reward", action="store_true",
-                        help="Enable reward shaping (flagpole bonus, death penalty).")
-    parser.add_argument("--lr_schedule", action="store_true",
-                        help="Enable linear learning rate annealing.")
+    parser.add_argument("--no_custom_reward", action="store_true",
+                        help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
+    parser.add_argument("--no_lr_schedule", action="store_true",
+                        help="DISABLE linear learning rate annealing.")
     parser.add_argument("--output_dir", type=str, default="./runs/default_run",
                         help="Base directory for models, checkpoints, and logs.")
     return parser.parse_args()
@@ -66,13 +66,16 @@ def execute_training():
 
     print(f"Training on device: {args.device}")
     print(f"Environment: {target_envs}")
-    print(f"Custom reward: {args.use_custom_reward} | LR schedule: {args.lr_schedule}")
+    use_custom_reward = not args.no_custom_reward
+    use_lr_schedule = not args.no_lr_schedule
+
+    print(f"Custom reward: {use_custom_reward} | LR schedule: {use_lr_schedule}")
 
     env = create_mario_environment(
         env_id=target_envs,
         n_envs=args.n_envs,
-        use_custom_reward=args.use_custom_reward,
-        use_noop=args.use_custom_reward,
+        use_custom_reward=use_custom_reward,
+        use_noop=use_custom_reward,
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -94,7 +97,7 @@ def execute_training():
     )
 
     lr = args.learning_rate
-    if args.lr_schedule:
+    if use_lr_schedule:
         lr = linear_schedule(args.learning_rate)
 
     if args.load_model:

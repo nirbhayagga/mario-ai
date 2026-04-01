@@ -41,8 +41,8 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--device` | `cuda` | `cuda` or `cpu`. |
 | `--total_timesteps` | `2000000` | Total training steps. |
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
-| `--use_custom_reward` | off | Enables flagpole bonus (+500) and death penalty (-50). |
-| `--lr_schedule` | off | Linear learning rate decay over training. |
+| `--no_custom_reward` | off | Disables reward shaping (flagpole bonus, death penalty, stuck penalty). Custom rewards are ON by default. |
+| `--no_lr_schedule` | off | Disables linear learning rate decay. LR schedule is ON by default. |
 | `--load_model` | none | Path to a `.zip` model to resume from. LR schedule is correctly applied on resume. |
 | `--model_path` | none | Model for evaluation. |
 | `--checkpoint_dir` | none | Directory containing checkpoints for montage visualization. |
@@ -64,7 +64,7 @@ These defaults are based on community benchmarks from GitHub and Reddit for Supe
 | `--vf_coef` | `0.5` | Balanced actor-critic weighting, standard for PPO. |
 | `max_grad_norm` | `0.5` | Gradient clipping prevents catastrophic policy updates during long runs. |
 | `--n_epochs` | `10` | Sufficient optimization passes per batch without overfitting to the rollout. |
-| `--learning_rate` | `1e-4` | Conservative rate for CNN pixel input. Use `--lr_schedule` for linear decay. |
+| `--learning_rate` | `1e-4` | Conservative rate for CNN pixel input. Defaults to linear decay (disable with `--no_lr_schedule`). |
 
 ---
 
@@ -74,21 +74,19 @@ These defaults are based on community benchmarks from GitHub and Reddit for Supe
 
 ```bash
 python run_pipeline.py --mode train --level 1-1 \
-    --total_timesteps 5000000 --n_envs 8 \
-    --use_custom_reward --lr_schedule
+    --total_timesteps 5000000 --n_envs 8
 ```
 
 * **Timesteps**: 2-5M for World 1 levels, 5-10M for harder levels (castles, underwater).
 * **Envs**: 4-8 on a standard GPU, up to 24 if you have the VRAM/CPU cores.
-* **Always use** `--use_custom_reward --lr_schedule` for best convergence.
+* **Reward/LR**: Custom rewards and LR schedules are enabled by default for optimal convergence.
 * **Checkpoints**: Default `--save_freq 50000` gives ~10-20 checkpoints for a typical run.
 
 ### Multi-Level Training (e.g. World 1)
 
 ```bash
 python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 \
-    --total_timesteps 15000000 --n_envs 16 \
-    --use_custom_reward --lr_schedule
+    --total_timesteps 15000000 --n_envs 16
 ```
 
 * **Timesteps**: ~3-5M per level in the set (so 4 levels = 12-20M).
@@ -97,11 +95,8 @@ python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 \
 
 ### General Training (5 diverse levels)
 
-```bash
 python run_pipeline.py --mode train_general \
-    --total_timesteps 25000000 --n_envs 20 \
-    --use_custom_reward --lr_schedule
-```
+    --total_timesteps 25000000 --n_envs 20
 
 * **Timesteps**: 20-50M for a generalized agent that handles overworld, underground, and castle stages.
 * **Envs**: 20 (4 per level) for balanced coverage. Minimum is 5 (one per level, set automatically).
@@ -113,12 +108,11 @@ python run_pipeline.py --mode train_general \
 python run_pipeline.py --mode train --level 1-1 \
     --load_model runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip \
     --total_timesteps 2000000 --n_envs 8 \
-    --use_custom_reward --lr_schedule \
     --learning_rate 5e-5
 ```
 
 * Use a lower learning rate (5e-5 or 2.5e-5) to refine without destroying learned behavior.
-* `--lr_schedule` is correctly applied on resume.
+* The linear LR schedule applies automatically on resume (disable with `--no_lr_schedule`).
 
 ### Which Map Version to Use
 
@@ -174,22 +168,22 @@ python run_pipeline.py --mode validate --level 1-1
 
 Train on a single level:
 ```bash
-python run_pipeline.py --mode train --level 1-1 --total_timesteps 5000000 --n_envs 8 --use_custom_reward --lr_schedule
+python run_pipeline.py --mode train --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 Resume from a checkpoint:
 ```bash
-python run_pipeline.py --mode train --level 1-1 --load_model runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip --total_timesteps 2000000 --use_custom_reward --lr_schedule
+python run_pipeline.py --mode train --level 1-1 --load_model runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip --total_timesteps 2000000
 ```
 
 Train on multiple levels simultaneously:
 ```bash
-python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16 --use_custom_reward --lr_schedule
+python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
 ```
 
 General training across diverse levels:
 ```bash
-python run_pipeline.py --mode train_general --total_timesteps 25000000 --n_envs 20 --use_custom_reward --lr_schedule
+python run_pipeline.py --mode train_general --total_timesteps 25000000 --n_envs 20
 ```
 
 Generate a gameplay video with metadata overlay:
@@ -224,7 +218,7 @@ python run_pipeline.py --mode compete --level 1-1 --model_path runs/1-1_5000000s
 
 Run the full pipeline (default when `--mode` is omitted):
 ```bash
-python run_pipeline.py --level 1-1 --total_timesteps 5000000 --n_envs 8 --use_custom_reward --lr_schedule
+python run_pipeline.py --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 ---

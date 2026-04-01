@@ -42,10 +42,10 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
         cmd += ["--save_freq", str(args.save_freq)]
     if args.load_model:
         cmd += ["--load_model", args.load_model]
-    if args.use_custom_reward:
-        cmd += ["--use_custom_reward"]
-    if args.lr_schedule:
-        cmd += ["--lr_schedule"]
+    if args.no_custom_reward:
+        cmd += ["--no_custom_reward"]
+    if args.no_lr_schedule:
+        cmd += ["--no_lr_schedule"]
     cmd += unknown
     return cmd
 
@@ -72,10 +72,10 @@ def main():
                         help="Hardware device for training and inference.")
     parser.add_argument("--n_envs", type=int, default=4,
                         help="Number of parallel environments.")
-    parser.add_argument("--use_custom_reward", action="store_true",
-                        help="Enable reward shaping (flagpole bonus, death penalty).")
-    parser.add_argument("--lr_schedule", action="store_true",
-                        help="Enable linear learning rate annealing.")
+    parser.add_argument("--no_custom_reward", action="store_true",
+                        help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
+    parser.add_argument("--no_lr_schedule", action="store_true",
+                        help="DISABLE linear learning rate annealing.")
     parser.add_argument("--load_model", type=str, default=None,
                         help="Path to a .zip model to resume training from.")
 
@@ -107,9 +107,9 @@ def main():
     # Generate dynamic run ID and output paths
     base_level = "general" if args.mode == "train_general" else args.level.replace(",", "_")
     run_id = f"{base_level}_{args.total_timesteps}steps"
-    if args.use_custom_reward:
+    if not args.no_custom_reward:
         run_id += "_rew"
-    if args.lr_schedule:
+    if not args.no_lr_schedule:
         run_id += "_lr"
     if args.load_model:
         run_id += "_resume"
