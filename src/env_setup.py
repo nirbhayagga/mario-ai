@@ -13,46 +13,83 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, Subproc
 
 
 class CustomRewardWrapper(gym.Wrapper):
-    """Reward shaping: bonus for reaching the flagpole, penalty for death, and stuck penalty."""
+    """
+    Reward shaping: flagpole bonus, death penalty, stuck penalty,
+    coin collection, score delta (kill proxy), power-up tracking,
+    and time bonus on level clear.
+    """
 
     def __init__(self, env):
         super(CustomRewardWrapper, self).__init__(env)
         self.current_x = 0
         self.x_stuck_frames = 0
+        self.last_score = 0
+        self.last_coins = 0
+        self.last_status = 'small'
 
     def step(self, action):
         state, reward, done, info = self.env.step(action)
 
+        # --- Flagpole bonus / death penalty ---
         if info.get('flag_get', False):
             reward += 500
+            # Time bonus: reward finishing quickly (time_remaining * 0.1)
+            time_left = info.get('time', 0)
+            reward += time_left * 0.1
 
         if done and not info.get('flag_get', False):
             reward -= 50
-            
-        # Penalize for getting stuck (not moving right)
+
+        # --- Coin collection bonus ---
+        coins = info.get('coins', 0)
+        coin_delta = coins - self.last_coins
+        if coin_delta > 0:
+            reward += coin_delta * 2.0
+        self.last_coins = coins
+
+        # --- Score delta (proxy for enemy kills, bricks, etc.) ---
+        score = info.get('score', 0)
+        score_delta = score - self.last_score
+        if score_delta > 0:
+            reward += score_delta * 0.025
+        self.last_score = score
+
+        # --- Power-up / hit tracking ---
+        status = info.get('status', 'small')
+        if self.last_status == 'small' and status in ('tall', 'fireball'):
+            reward += 25   # Got mushroom or flower
+        elif self.last_status == 'fireball' and status == 'tall':
+            reward += 25   # Got flower from tall (still a power-up)
+        elif self.last_status in ('tall', 'fireball') and status == 'small':
+            reward -= 25   # Got hit and shrunk
+        self.last_status = status
+
+        # --- Stuck penalty (not moving right) ---
         x_pos = info.get('x_pos', 0)
-        
-        # If we haven't moved right
+
         if x_pos <= self.current_x:
             self.x_stuck_frames += 1
         else:
             self.x_stuck_frames = 0
             self.current_x = max(self.current_x, x_pos)
-            
-        # If stuck for ~2.5 seconds (20 wrapped frames * 4 skip_frames), apply small penalty
-        if self.x_stuck_frames > 20: 
-            reward -= 1.0 
-            
-        # If stuck for ~10 seconds, end the episode to prevent wasting training time
+
+        # ~2.5 seconds stuck: continuous small penalty
+        if self.x_stuck_frames > 20:
+            reward -= 1.0
+
+        # ~10 seconds stuck: end episode to save training time
         if self.x_stuck_frames > 150:
             done = True
-            reward -= 20 # Additional penalty for failing to progress
+            reward -= 20
 
         return state, reward, done, info
-        
+
     def reset(self, **kwargs):
         self.current_x = 0
         self.x_stuck_frames = 0
+        self.last_score = 0
+        self.last_coins = 0
+        self.last_status = 'small'
         return self.env.reset(**kwargs)
 
 
