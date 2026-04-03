@@ -63,6 +63,15 @@ def export_evaluation_video():
     total_reward = 0
     max_steps = args.max_steps
     step = 0
+    cleared = False
+
+    # Resolve action space for overlay
+    if args.action_space == "complex":
+        movement = COMPLEX_MOVEMENT
+    elif args.action_space == "right_only":
+        movement = RIGHT_ONLY
+    else:
+        movement = SIMPLE_MOVEMENT
 
     print(f"Recording evaluation to {args.video_output} (max {max_steps} steps)")
 
@@ -79,14 +88,6 @@ def export_evaluation_video():
         # Overlay metadata from the env's info dict (perfectly in sync)
         x_pos = int(info[0].get('x_pos', 0))
         score = int(info[0].get('score', 0))
-        
-        if args.action_space == "complex":
-            movement = COMPLEX_MOVEMENT
-        elif args.action_space == "right_only":
-            movement = RIGHT_ONLY
-        else:
-            movement = SIMPLE_MOVEMENT
-            
         action_name = str(movement[action_int]) if action_int < len(movement) else "UNKNOWN"
 
         cv2.putText(bgr_frame, f"X: {x_pos}", (5, 20),
@@ -102,12 +103,17 @@ def export_evaluation_video():
 
         # Stop on level clear
         if info[0].get('flag_get', False):
+            cleared = True
             print(f"Level cleared at step {step + 1}!")
             break
 
-        # VecEnv auto-resets on done, so the model keeps playing across deaths
+        # Stop on first death - prevents misleading score accumulation across resets
+        if done[0]:
+            print(f"Mario died at step {step + 1} (x_pos={x_pos}).")
+            break
 
-    print(f"Evaluation complete. Total reward: {total_reward:.0f} ({step + 1} steps)")
+    result = "CLEARED" if cleared else "DIED"
+    print(f"Evaluation complete [{result}]. Total reward: {total_reward:.0f} ({step + 1} steps, max X: {x_pos})")
 
     video_writer.release()
     vec_env.close()

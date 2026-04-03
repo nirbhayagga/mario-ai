@@ -7,7 +7,7 @@ with TensorBoard logging and periodic checkpointing.
 import argparse
 import os
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 from env_setup import create_mario_environment
 
 
@@ -101,6 +101,29 @@ def execute_training():
         name_prefix='mario_ppo_agent',
     )
 
+    # Eval callback: periodically evaluate and save the best model.
+    # This protects against catastrophic forgetting where the final model
+    # may be far worse than intermediate ones.
+    eval_env = create_mario_environment(
+        env_id=target_envs if isinstance(target_envs, str) else target_envs[0],
+        n_envs=1,
+        use_custom_reward=use_custom_reward,
+        use_noop=False,
+        action_space=args.action_space,
+    )
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=args.output_dir,
+        log_path=os.path.join(args.output_dir, "eval_logs"),
+        eval_freq=save_freq,
+        n_eval_episodes=3,
+        deterministic=True,
+        render=False,
+        verbose=1,
+    )
+
+    combined_callback = CallbackList([checkpoint_callback, eval_callback])
+
     lr = args.learning_rate
     if use_lr_schedule:
         lr = linear_schedule(args.learning_rate)
@@ -136,7 +159,7 @@ def execute_training():
 
     model.learn(
         total_timesteps=args.total_timesteps,
-        callback=checkpoint_callback,
+        callback=combined_callback,
         progress_bar=True,
     )
 

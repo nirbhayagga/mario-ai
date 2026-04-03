@@ -122,7 +122,11 @@ def main():
     output_dir = os.path.join("runs", run_id)
 
     # Resolve paths with fallbacks to the dynamic output directory
-    model_path = args.model_path or os.path.join(output_dir, "mario_ppo_final.zip")
+    # Prefer best_model.zip (saved by EvalCallback) over the final model
+    best_model = os.path.join(output_dir, "best_model.zip")
+    final_model = os.path.join(output_dir, "mario_ppo_final.zip")
+    default_model = best_model if os.path.exists(best_model) else final_model
+    model_path = args.model_path or default_model
     checkpoint_dir = args.checkpoint_dir or os.path.join(output_dir, "checkpoints")
     video_output = args.video_output or os.path.join(output_dir, "evaluation_run.mp4")
 
@@ -203,7 +207,11 @@ def main():
         run_command(build_train_command(python_cmd, args, env_id, output_dir, unknown))
 
         print("\n=== STAGE 3: EVALUATION ===")
-        model_to_use = os.path.join(output_dir, "mario_ppo_final.zip")
+        # Prefer best_model (peak performance) over final model (may have collapsed)
+        best_path = os.path.join(output_dir, "best_model.zip")
+        final_path = os.path.join(output_dir, "mario_ppo_final.zip")
+        model_to_use = best_path if os.path.exists(best_path) else final_path
+        print(f"Using model: {model_to_use}")
         os.makedirs(os.path.dirname(video_output), exist_ok=True)
         run_command(python_cmd + [
             "src/evaluate.py",

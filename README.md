@@ -266,7 +266,9 @@ The 32 levels fall into four categories requiring different AI strategies:
 * `runs/`: Each experiment generates an isolated folder using the pattern `<level>_<timesteps>steps[_rew][_lr][_resume]`:
     * `tensorboard/`: TensorBoard event logs.
     * `checkpoints/`: Periodic model snapshots.
-    * `mario_ppo_final.zip`: Final trained model weights.
+    * `eval_logs/`: Evaluation results from `EvalCallback`.
+    * `best_model.zip`: Best-performing model weights (selected by periodic evaluation, protects against catastrophic forgetting).
+    * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
     * `evaluation_run.mp4`: Gameplay video with overlay.
     * `progress_montage.mp4`: Side-by-side checkpoint comparison.
     * `reward_curve.png`: Static reward plot.
