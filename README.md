@@ -42,7 +42,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
 | `--total_timesteps` | `2000000` | Total training steps. |
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
-| `--no_custom_reward` | off | Disables reward shaping (flagpole bonus, death penalty, stuck penalty). Custom rewards are ON by default. |
+| `--no_custom_reward` | off | Disables stuck penalty, early termination, and reward clipping. Custom rewards are ON by default. |
 | `--no_lr_schedule` | off | Disables linear learning rate decay. LR schedule is ON by default. |
 | `--load_model` | none | Path to a `.zip` model to resume from. LR schedule is correctly applied on resume. |
 | `--model_path` | none | Model for evaluation. |
@@ -58,14 +58,15 @@ These defaults are based on community benchmarks from GitHub and Reddit for Supe
 
 | Parameter | Default | Rationale |
 | :--- | :--- | :--- |
-| `--n_steps` | `2048` | Mario levels are long. A wide trajectory window lets the agent connect early actions to late rewards. |
+| `--n_steps` | `512` | Shorter rollouts converge faster for Mario. Longer buffers (2048) dilute the learning signal. |
 | `--gamma` | `0.99` | High discount factor prioritizes reaching the flagpole over grabbing local coins. |
-| `--batch_size` | `64` | Small batches improve gradient signal quality for pixel-based input. |
+| `--batch_size` | `256` | Larger batches stabilize gradients with the clipped reward range. |
 | `--ent_coef` | `0.01` | Entropy bonus encourages exploration and prevents the agent from getting stuck in loops. |
 | `--vf_coef` | `0.5` | Balanced actor-critic weighting, standard for PPO. |
 | `max_grad_norm` | `0.5` | Gradient clipping prevents catastrophic policy updates during long runs. |
+| `--clip_range` | `0.1` | Tighter clipping than the SB3 default (0.2) prevents catastrophic policy swings. |
 | `--n_epochs` | `10` | Sufficient optimization passes per batch without overfitting to the rollout. |
-| `--learning_rate` | `1e-4` | Conservative rate for CNN pixel input. Defaults to linear decay (disable with `--no_lr_schedule`). |
+| `--learning_rate` | `2.5e-4` | SB3 default. Paired with linear decay (disable with `--no_lr_schedule`). |
 
 ---
 

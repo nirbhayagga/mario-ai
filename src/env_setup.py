@@ -4,6 +4,7 @@ Constructs the wrapped gym-super-mario-bros environment with observation
 transformations required for PPO training with a CNN policy.
 """
 
+import numpy as np
 import gym
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
@@ -14,57 +15,24 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, Subproc
 
 class CustomRewardWrapper(gym.Wrapper):
     """
-    Reward shaping: flagpole bonus, death penalty, stuck penalty,
-    coin collection, score delta (kill proxy), power-up tracking,
-    and time bonus on level clear.
+    Stuck penalty and early termination only.
+
+    The base gym-super-mario-bros environment already provides good reward
+    shaping (x-velocity + clock penalty + death penalty). This wrapper adds
+    only what the base env lacks: detection and punishment of the agent
+    getting physically stuck against obstacles like pipes.
+
+    Applied BEFORE SkipFrame, so frame counts are real NES frames.
     """
 
     def __init__(self, env):
         super(CustomRewardWrapper, self).__init__(env)
         self.current_x = 0
         self.x_stuck_frames = 0
-        self.last_score = 0
-        self.last_coins = 0
-        self.last_status = 'small'
 
     def step(self, action):
         state, reward, done, info = self.env.step(action)
 
-        # --- Flagpole bonus / death penalty ---
-        if info.get('flag_get', False):
-            reward += 500
-            # Time bonus: reward finishing quickly (time_remaining * 0.1)
-            time_left = info.get('time', 0)
-            reward += time_left * 0.1
-
-        if done and not info.get('flag_get', False):
-            reward -= 50
-
-        # --- Coin collection bonus ---
-        coins = info.get('coins', 0)
-        coin_delta = coins - self.last_coins
-        if coin_delta > 0:
-            reward += coin_delta * 2.0
-        self.last_coins = coins
-
-        # --- Score delta (proxy for enemy kills, bricks, etc.) ---
-        score = info.get('score', 0)
-        score_delta = score - self.last_score
-        if score_delta > 0:
-            reward += score_delta * 0.025
-        self.last_score = score
-
-        # --- Power-up / hit tracking ---
-        status = info.get('status', 'small')
-        if self.last_status == 'small' and status in ('tall', 'fireball'):
-            reward += 25   # Got mushroom or flower
-        elif self.last_status == 'fireball' and status == 'tall':
-            reward += 25   # Got flower from tall (still a power-up)
-        elif self.last_status in ('tall', 'fireball') and status == 'small':
-            reward -= 25   # Got hit and shrunk
-        self.last_status = status
-
-        # --- Stuck penalty (not moving right) ---
         x_pos = info.get('x_pos', 0)
 
         if x_pos <= self.current_x:
@@ -73,24 +41,36 @@ class CustomRewardWrapper(gym.Wrapper):
             self.x_stuck_frames = 0
             self.current_x = max(self.current_x, x_pos)
 
-        # ~2.5 seconds stuck: continuous small penalty
-        if self.x_stuck_frames > 20:
+        # ~1.3 seconds stuck (80 real frames at 60fps): continuous small penalty
+        if self.x_stuck_frames > 80:
             reward -= 1.0
 
-        # ~10 seconds stuck: end episode to save training time
-        if self.x_stuck_frames > 150:
+        # ~10 seconds stuck (600 real frames): end episode to save training time
+        if self.x_stuck_frames > 600:
             done = True
-            reward -= 20
+            reward -= 15
 
         return state, reward, done, info
 
     def reset(self, **kwargs):
         self.current_x = 0
         self.x_stuck_frames = 0
-        self.last_score = 0
-        self.last_coins = 0
-        self.last_status = 'small'
         return self.env.reset(**kwargs)
+
+
+class RewardClipWrapper(gym.RewardWrapper):
+    """
+    Clips rewards to [-15, 15] to prevent gradient explosions in PPO.
+    Applied AFTER SkipFrame so the accumulated 4-frame reward is clipped.
+    """
+
+    def __init__(self, env, low=-15.0, high=15.0):
+        super(RewardClipWrapper, self).__init__(env)
+        self.low = low
+        self.high = high
+
+    def reward(self, reward):
+        return float(np.clip(reward, self.low, self.high))
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -161,9 +141,12 @@ class EpisodicLifeEnv(gym.Wrapper):
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
                              use_custom_reward=False, use_noop=False, action_space="simple"):
     """
-    Builds the full environment stack: JoypadSpace, EpisodicLife, SkipFrame,
-    optional reward shaping, grayscale, resize to 84x84, then VecFrameStack(4).
-    Supports single level, parallel single level, and multi-level training.
+    Builds the full environment stack:
+      JoypadSpace -> EpisodicLife -> [CustomReward] -> SkipFrame -> [RewardClip]
+      -> GrayScale -> Resize -> VecFrameStack(4)
+
+    CustomReward is placed BEFORE SkipFrame so it sees individual frames.
+    RewardClip is placed AFTER SkipFrame so the accumulated reward is clipped.
     """
 
     def make_env(target_id):
@@ -179,9 +162,11 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
                 movement = SIMPLE_MOVEMENT
             env = JoypadSpace(env, movement)
             env = EpisodicLifeEnv(env)
-            env = SkipFrame(env, skip=4)
             if use_custom_reward:
                 env = CustomRewardWrapper(env)
+            env = SkipFrame(env, skip=4)
+            if use_custom_reward:
+                env = RewardClipWrapper(env, low=-15.0, high=15.0)
             env = GrayScaleObservation(env, keep_dim=True)
             env = ResizeObservation(env, shape=84)
             return env

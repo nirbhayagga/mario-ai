@@ -17,11 +17,11 @@ def parse_training_arguments():
                         help="Hardware device for training.")
     parser.add_argument("--total_timesteps", type=int, default=1000000,
                         help="Total environment steps to train for.")
-    parser.add_argument("--learning_rate", type=float, default=1e-4,
+    parser.add_argument("--learning_rate", type=float, default=2.5e-4,
                         help="Optimizer learning rate.")
-    parser.add_argument("--batch_size", type=int, default=64,
+    parser.add_argument("--batch_size", type=int, default=256,
                         help="Minibatch size per gradient update.")
-    parser.add_argument("--n_steps", type=int, default=2048,
+    parser.add_argument("--n_steps", type=int, default=512,
                         help="Steps per environment to collect before each update.")
     parser.add_argument("--ent_coef", type=float, default=0.01,
                         help="Entropy coefficient for exploration.")
@@ -40,11 +40,13 @@ def parse_training_arguments():
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
                         help="The Gym environment ID.")
     parser.add_argument("--no_custom_reward", action="store_true",
-                        help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
+                        help="DISABLE stuck penalty, early termination, and reward clipping.")
     parser.add_argument("--no_lr_schedule", action="store_true",
                         help="DISABLE linear learning rate annealing.")
     parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
                         help="Action space to use (simple, complex, or right_only).")
+    parser.add_argument("--clip_range", type=float, default=0.1,
+                        help="PPO clipping parameter (tighter = more stable).")
     parser.add_argument("--output_dir", type=str, default="./runs/default_run",
                         help="Base directory for models, checkpoints, and logs.")
     return parser.parse_args()
@@ -107,7 +109,7 @@ def execute_training():
     eval_env = create_mario_environment(
         env_id=target_envs if isinstance(target_envs, str) else target_envs[0],
         n_envs=1,
-        use_custom_reward=use_custom_reward,
+        use_custom_reward=False,
         use_noop=False,
         action_space=args.action_space,
     )
@@ -152,6 +154,7 @@ def execute_training():
             gamma=args.gamma,
             vf_coef=args.vf_coef,
             max_grad_norm=0.5,
+            clip_range=args.clip_range,
             device=args.device,
             verbose=1,
             tensorboard_log=tb_log,

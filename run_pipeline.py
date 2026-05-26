@@ -74,7 +74,7 @@ def main():
     parser.add_argument("--n_envs", type=int, default=4,
                         help="Number of parallel environments.")
     parser.add_argument("--no_custom_reward", action="store_true",
-                        help="DISABLE reward shaping (flagpole bonus, death penalty, stuck penalty).")
+                        help="DISABLE stuck penalty, early termination, and reward clipping.")
     parser.add_argument("--no_lr_schedule", action="store_true",
                         help="DISABLE linear learning rate annealing.")
     parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
