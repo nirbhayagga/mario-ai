@@ -36,7 +36,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 
 | Argument | Default | Description |
 | :--- | :--- | :--- |
-| `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `train_general`, `manual`, `all` |
+| `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `manual`, `all` |
 | `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
 | `--device` | `cuda` | `cuda` or `cpu`. |
 | `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
@@ -96,15 +96,6 @@ python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 \
 * **Envs**: Use at least 4x the number of levels (e.g. 16 envs for 4 levels). Levels cycle evenly across envs.
 * **Entropy**: Consider `--ent_coef 0.02` (pass via extra args) for more exploration across diverse levels.
 
-### General Training (5 diverse levels)
-
-python run_pipeline.py --mode train_general \
-    --total_timesteps 25000000 --n_envs 20
-
-* **Timesteps**: 20-50M for a generalized agent that handles overworld, underground, and castle stages.
-* **Envs**: 20 (4 per level) for balanced coverage. Minimum is 5 (one per level, set automatically).
-* **Levels**: Fixed set: 1-1 (overworld), 1-2 (underground), 2-1 (overworld variant), 3-1 (overworld), 4-1 (overworld).
-
 ### Fine-Tuning from Checkpoint
 
 ```bash
@@ -140,7 +131,6 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 | :--- | :--- | :--- | :--- |
 | `validate` | Confirms the environment initializes and can step without crashing. | No | Pass/fail output. |
 | `train` | Runs PPO training on one or more levels. | No (optional `--load_model` to resume) | Model weights, checkpoints, TensorBoard logs. |
-| `train_general` | Trains across a curated set of 5 diverse levels (1-1, 1-2, 2-1, 3-1, 4-1). | No (optional `--load_model`) | Same as `train`. |
 | `evaluate` | Loads a trained model and records a gameplay video with metadata overlay. Runs until level clear or `--max_steps`. | Yes (`--model_path`) | `.mp4` video file. |
 | `visualize` | Renders up to 4 checkpoints in a side-by-side grid video. | Yes (`--checkpoint_dir`) | `.mp4` montage video. |
 | `plot` | Generates a static reward curve from TensorBoard logs. | No | `.png` plot file. |
@@ -153,7 +143,7 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 If you choose to run modes individually instead of using `all`, follow this order:
 
 1. **validate** - Confirm your environment works before committing to a long training run.
-2. **train** (or **train_general**) - Run PPO training. This produces model weights and TensorBoard logs.
+2. **train** - Run PPO training. This produces model weights and TensorBoard logs.
 3. **evaluate** - Generate a video of the trained agent playing. Requires the model from step 2.
 4. **visualize** - Compare checkpoint performance over time. Requires checkpoints from step 2.
 5. **plot** - Generate a reward curve image. Requires TensorBoard logs from step 2.
@@ -181,11 +171,6 @@ python run_pipeline.py --mode train --level 1-1 --load_model runs/1-1_5000000ste
 Train on multiple levels simultaneously:
 ```bash
 python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
-```
-
-General training across diverse levels:
-```bash
-python run_pipeline.py --mode train_general --total_timesteps 25000000 --n_envs 20
 ```
 
 Generate a gameplay video with metadata overlay:
