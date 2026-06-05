@@ -36,7 +36,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 
 | Argument | Default | Description |
 | :--- | :--- | :--- |
-| `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `train_general`, `manual`, `compete`, `all` |
+| `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `train_general`, `manual`, `all` |
 | `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
 | `--device` | `cuda` | `cuda` or `cpu`. |
 | `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
@@ -44,7 +44,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
 | `--no_custom_reward` | off | Disables stuck penalty, early termination, and reward clipping. Custom rewards are ON by default. |
 | `--no_lr_schedule` | off | Disables linear learning rate decay. LR schedule is ON by default. |
-| `--load_model` | none | Path to a `.zip` model to resume from. LR schedule is correctly applied on resume. |
+| `--load_model` | none | Path to a `.zip` model to resume from. All CLI hyperparameters (LR, clip_range, etc.) are applied on resume. |
 | `--model_path` | none | Model for evaluation. |
 | `--checkpoint_dir` | none | Directory containing checkpoints for montage visualization. |
 | `--video_output` | none | Destination path for exported `.mp4` video files. |
@@ -83,7 +83,7 @@ python run_pipeline.py --mode train --level 1-1 \
 * **Envs**: 4-8 on a standard GPU, up to 24 if you have the VRAM/CPU cores.
 * **Reward/LR**: Custom rewards and LR schedules are enabled by default for optimal convergence.
 * **Action Space**: Use `--action_space right_only` to reduce the action space from 7 to 5, significantly speeding up training by preventing Mario from walking backward.
-* **Checkpoints**: Default `--save_freq 50000` gives ~10-20 checkpoints for a typical run.
+* **Checkpoints**: Auto-computed for ~15 checkpoints per run. Override with `--save_freq`.
 
 ### Multi-Level Training (e.g. World 1)
 
@@ -146,7 +146,6 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 | `plot` | Generates a static reward curve from TensorBoard logs. | No | `.png` plot file. |
 | `dashboard` | Launches TensorBoard in the browser. | No | Web UI. |
 | `manual` | Human-controlled gameplay via keyboard. Resets on death. Press Escape to quit. | No | None. |
-| `compete` | Human plays first, then the AI plays the same level for comparison. | Yes (`--model_path`) | None (visual only). |
 | `all` | Runs validate, train, evaluate, visualize, and plot in sequence (default). | No | All artifacts. |
 
 ### Run Order (When Executing Modes Separately)
@@ -160,7 +159,7 @@ If you choose to run modes individually instead of using `all`, follow this orde
 5. **plot** - Generate a reward curve image. Requires TensorBoard logs from step 2.
 6. **dashboard** - (Optional) Launch TensorBoard for live monitoring. Can run during step 2.
 
-The `manual` and `compete` modes are standalone and can be run at any time.
+The `manual` mode is standalone and can be run at any time.
 
 ### Examples
 
@@ -212,11 +211,6 @@ python run_pipeline.py --mode dashboard --level 1-1
 Play Mario manually (arrow keys, Space/Up to jump, Shift to sprint, Escape to quit):
 ```bash
 python run_pipeline.py --mode manual
-```
-
-Compete against the AI:
-```bash
-python run_pipeline.py --mode compete --level 1-1 --model_path runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip
 ```
 
 Run the full pipeline (default when `--mode` is omitted):

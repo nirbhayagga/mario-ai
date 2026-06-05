@@ -27,7 +27,7 @@ class CustomRewardWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super(CustomRewardWrapper, self).__init__(env)
-        self.current_x = 0
+        self.last_x = 0
         self.x_stuck_frames = 0
 
     def step(self, action):
@@ -35,11 +35,14 @@ class CustomRewardWrapper(gym.Wrapper):
 
         x_pos = info.get('x_pos', 0)
 
-        if x_pos <= self.current_x:
+        # Rolling window: stuck means x hasn't changed by more than 1 pixel
+        # since the last frame. This avoids penalizing legitimate backward
+        # movement (e.g. underground pipe exits in 1-2, 4-2).
+        if abs(x_pos - self.last_x) < 2:
             self.x_stuck_frames += 1
         else:
             self.x_stuck_frames = 0
-            self.current_x = max(self.current_x, x_pos)
+        self.last_x = x_pos
 
         # ~1.3 seconds stuck (80 real frames at 60fps): continuous small penalty
         if self.x_stuck_frames > 80:
@@ -53,7 +56,7 @@ class CustomRewardWrapper(gym.Wrapper):
         return state, reward, done, info
 
     def reset(self, **kwargs):
-        self.current_x = 0
+        self.last_x = 0
         self.x_stuck_frames = 0
         return self.env.reset(**kwargs)
 
@@ -82,7 +85,7 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
-        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
+        noops = np.random.randint(1, self.noop_max + 1)
         obs = None
         for _ in range(noops):
             obs, _, done, _ = self.env.step(0)
@@ -93,24 +96,35 @@ class NoopResetEnv(gym.Wrapper):
 
 class SkipFrame(gym.Wrapper):
     """
-    Repeats the chosen action for `skip` consecutive frames and accumulates
-    reward. Returns only the final frame. Reduces training time by ~75% and
-    gives the frame stack a wider temporal window (~260ms at skip=4).
+    Repeats the chosen action for `skip` consecutive frames, accumulates
+    reward, and returns the pixel-wise maximum of the last 2 frames.
+
+    Max-pooling prevents flickering NES sprites (rendered on alternating
+    frames due to hardware limitations) from becoming invisible to the CNN.
+    This is the standard MaxAndSkip technique from the original DQN paper.
     """
 
     def __init__(self, env, skip=4):
         super(SkipFrame, self).__init__(env)
         self._skip = skip
+        self._obs_buffer = np.zeros(
+            (2,) + env.observation_space.shape, dtype=env.observation_space.dtype
+        )
 
     def step(self, action):
         total_reward = 0.0
         done = False
-        for _ in range(self._skip):
+        for i in range(self._skip):
             obs, reward, done, info = self.env.step(action)
+            # Store last 2 observations for max-pooling
+            if i >= self._skip - 2:
+                self._obs_buffer[i - (self._skip - 2)] = obs
             total_reward += reward
             if done:
                 break
-        return obs, total_reward, done, info
+        # Pixel-wise max of last 2 frames
+        max_frame = self._obs_buffer.max(axis=0)
+        return max_frame, total_reward, done, info
 
 
 class EpisodicLifeEnv(gym.Wrapper):

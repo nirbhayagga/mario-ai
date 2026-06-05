@@ -53,9 +53,11 @@ def parse_training_arguments():
 
 
 def linear_schedule(initial_value):
-    """Returns a function that linearly decays from initial_value to 0."""
+    """Returns a function that linearly decays from initial_value to near-zero.
+    A small floor (1e-7) prevents the final training steps from being
+    completely wasted on zero-gradient updates."""
     def func(progress_remaining):
-        return progress_remaining * initial_value
+        return max(progress_remaining * initial_value, 1e-7)
     return func
 
 
@@ -138,8 +140,14 @@ def execute_training():
             device=args.device,
             tensorboard_log=tb_log,
         )
-        # Apply current LR settings to the resumed model
+        # Apply ALL current CLI settings to the resumed model so flags
+        # always take precedence over whatever was saved in the checkpoint.
         model.learning_rate = lr
+        model.clip_range = args.clip_range
+        model.ent_coef = args.ent_coef
+        model.batch_size = args.batch_size
+        model.n_steps = args.n_steps
+        model.n_epochs = args.n_epochs
     else:
         print("Initializing new PPO model.")
 

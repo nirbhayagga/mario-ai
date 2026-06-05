@@ -58,8 +58,8 @@ def main():
         type=str,
         default="all",
         choices=[
-            "validate", "train", "evaluate", "manual", "compete",
-            "visualize", "plot", "dashboard", "train_general", "all",
+            "validate", "train", "evaluate", "manual",
+            "visualize", "plot", "dashboard", "all",
         ],
         help="Pipeline mode (default: all).",
     )
@@ -108,7 +108,7 @@ def main():
     python_cmd = [sys.executable]
 
     # Generate dynamic run ID and output paths
-    base_level = "general" if args.mode == "train_general" else args.level.replace(",", "_")
+    base_level = args.level.replace(",", "_")
     run_id = f"{base_level}_{args.total_timesteps}steps"
     if not args.no_custom_reward:
         run_id += "_rew"
@@ -133,7 +133,13 @@ def main():
     # ---- Mode dispatch ----
 
     if args.mode == "validate":
-        run_command(python_cmd + ["src/validate.py", "--env_id", env_id])
+        validate_cmd = python_cmd + [
+            "src/validate.py", "--env_id", env_id,
+            "--action_space", args.action_space,
+        ]
+        if args.no_custom_reward:
+            validate_cmd += ["--no_custom_reward"]
+        run_command(validate_cmd)
 
     elif args.mode == "train":
         run_command(build_train_command(python_cmd, args, env_id, output_dir, unknown))
@@ -175,33 +181,18 @@ def main():
             ["tensorboard", "--logdir", os.path.join(output_dir, "tensorboard")] + unknown
         )
 
-    elif args.mode == "train_general":
-        general_levels = [
-            "SuperMarioBros-1-1-v0",
-            "SuperMarioBros-1-2-v0",
-            "SuperMarioBros-2-1-v0",
-            "SuperMarioBros-3-1-v0",
-            "SuperMarioBros-4-1-v0",
-        ]
-        general_env_id = ",".join(general_levels)
-        # Ensure at least one env per level; user can request more for better throughput
-        general_n_envs = max(args.n_envs, len(general_levels))
-        run_command(build_train_command(
-            python_cmd, args, general_env_id, output_dir, unknown,
-            n_envs_override=general_n_envs,
-        ))
-
     elif args.mode == "manual":
         run_command(python_cmd + ["src/manual_play.py", "--env_id", env_id])
 
-    elif args.mode == "compete":
-        run_command(python_cmd + [
-            "src/compete.py", "--env_id", env_id, "--model_path", model_path,
-        ])
-
     elif args.mode == "all":
         print("\n=== STAGE 1: VALIDATION ===")
-        run_command(python_cmd + ["src/validate.py", "--env_id", env_id])
+        validate_cmd = python_cmd + [
+            "src/validate.py", "--env_id", env_id,
+            "--action_space", args.action_space,
+        ]
+        if args.no_custom_reward:
+            validate_cmd += ["--no_custom_reward"]
+        run_command(validate_cmd)
 
         print("\n=== STAGE 2: TRAINING ===")
         run_command(build_train_command(python_cmd, args, env_id, output_dir, unknown))
