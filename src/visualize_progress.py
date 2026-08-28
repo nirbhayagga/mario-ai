@@ -4,6 +4,8 @@ Renders multiple model checkpoints into a single side-by-side montage video,
 plus a reduced GIF of it that is small enough to embed in a README.
 """
 
+from __future__ import annotations
+
 import argparse
 import cv2
 import os
@@ -21,14 +23,14 @@ MONTAGE_GIF_SCALE = 0.5
 MONTAGE_GIF_STRIDE = 3
 
 
-def checkpoint_step(path):
+def checkpoint_step(path: str) -> int:
     """Extracts the step count from a CheckpointCallback filename
     (e.g. mario_ppo_agent_250000_steps.zip -> 250000). Unparseable names sort first."""
     match = re.search(r"_(\d+)_steps", os.path.basename(path))
     return int(match.group(1)) if match else -1
 
 
-def select_checkpoints(model_files, max_models=4):
+def select_checkpoints(model_files: list[str], max_models: int = 4) -> list[str]:
     """Returns up to max_models checkpoints evenly spaced across training,
     always including the earliest and latest, sorted by step count.
 
@@ -43,15 +45,15 @@ def select_checkpoints(model_files, max_models=4):
     return [ordered[i] for i in indices]
 
 
-def gif_frame(bgr_frame, scale=MONTAGE_GIF_SCALE):
+def gif_frame(bgr_frame: np.ndarray, scale: float = MONTAGE_GIF_SCALE) -> np.ndarray:
     """Downscales a BGR video frame and converts it to RGB for the GIF recorder."""
     height, width = bgr_frame.shape[:2]
     size = (max(1, int(round(width * scale))), max(1, int(round(height * scale))))
     return cv2.cvtColor(cv2.resize(bgr_frame, size, interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
 
 
-def create_montage_video(checkpoint_dir, output_path,
-                         env_id="SuperMarioBros-v0", num_steps=1000, device="auto"):
+def create_montage_video(checkpoint_dir: str, output_path: str,
+                         env_id: str = "SuperMarioBros-v0", num_steps: int = 1000, device: str = "auto") -> None:
     """Loads up to 4 checkpoint models and renders them in a grid layout."""
 
     model_files = glob.glob(os.path.join(checkpoint_dir, "*.zip"))

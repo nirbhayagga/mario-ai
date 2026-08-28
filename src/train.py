@@ -4,6 +4,10 @@ Constructs the PPO model, parses CLI hyperparameters, and runs the training loop
 with TensorBoard logging and periodic checkpointing.
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
 import argparse
 import json
 import os
@@ -18,7 +22,7 @@ from callbacks import EpisodeStatsCallback
 from env_setup import create_mario_environment
 
 
-def parse_training_arguments():
+def parse_training_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="PPO Mario Training")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
                         help="Hardware device for training (auto picks CUDA when available).")
@@ -62,7 +66,7 @@ def parse_training_arguments():
     return parser.parse_args()
 
 
-def git_commit():
+def git_commit() -> str | None:
     """Short hash of the checked-out commit, or None outside a git checkout."""
     try:
         result = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True)
@@ -71,7 +75,7 @@ def git_commit():
     return result.stdout.strip()
 
 
-def build_run_config(args):
+def build_run_config(args: argparse.Namespace) -> dict[str, Any]:
     """Everything needed to reproduce or locate this run: all flags plus provenance."""
     config = dict(vars(args))
     config.update({
@@ -82,23 +86,23 @@ def build_run_config(args):
     return config
 
 
-def write_run_config(output_dir, config):
+def write_run_config(output_dir: str, config: dict[str, Any]) -> str:
     path = os.path.join(output_dir, "run_config.json")
     with open(path, "w") as f:
         json.dump(config, f, indent=2)
     return path
 
 
-def linear_schedule(initial_value):
+def linear_schedule(initial_value: float) -> Callable[[float], float]:
     """Returns a function that linearly decays from initial_value to near-zero.
     A small floor (1e-7) prevents the final training steps from being
     completely wasted on zero-gradient updates."""
-    def func(progress_remaining):
+    def func(progress_remaining: float) -> float:
         return max(progress_remaining * initial_value, 1e-7)
     return func
 
 
-def execute_training():
+def execute_training() -> None:
     args = parse_training_arguments()
 
     # Handle comma-separated multi-level IDs

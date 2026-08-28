@@ -5,12 +5,14 @@ at least one step without crashing. Uses the same configuration that training
 will use (action space, custom reward) so it catches config-specific bugs.
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 from env_setup import create_mario_environment
 
 
-def validate_environment():
+def validate_environment() -> None:
     parser = argparse.ArgumentParser(description="Mario Environment Validation")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
                         help="The Gym environment ID.")

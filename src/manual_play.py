@@ -4,6 +4,8 @@ Allows a human player to control Mario using keyboard input via PyGame.
 Resets automatically on death so the player can keep playing.
 """
 
+from __future__ import annotations
+
 import pygame
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT
@@ -11,7 +13,7 @@ from nes_py.wrappers import JoypadSpace
 import argparse
 
 
-def launch_manual_gameplay():
+def launch_manual_gameplay() -> None:
     """Opens a PyGame window for direct human control of Mario."""
     parser = argparse.ArgumentParser(description="Mario Manual Play")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",

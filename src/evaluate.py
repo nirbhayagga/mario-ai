@@ -7,6 +7,12 @@ evaluation_summary.json. A single environment serves both inference and
 rendering so the overlay is always in sync with what the model saw.
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
+import numpy as np
+
 import argparse
 import json
 import os
@@ -16,6 +22,7 @@ import cv2
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT, RIGHT_ONLY, SIMPLE_MOVEMENT
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.vec_env import VecEnv
 
 from env_setup import create_mario_environment
 from media import GifRecorder
@@ -26,17 +33,17 @@ REAL_TIME_FPS = 15.0
 GIF_TARGET_FPS = 15.0
 
 
-def video_fps(speed):
+def video_fps(speed: float) -> float:
     """Frames per second that play the recording back at `speed` x real time."""
     return REAL_TIME_FPS * speed
 
 
-def gif_stride(speed):
+def gif_stride(speed: float) -> int:
     """Keeps the GIF near GIF_TARGET_FPS by dropping frames as playback speed rises."""
     return max(1, int(round(video_fps(speed) / GIF_TARGET_FPS)))
 
 
-def parse_evaluation_arguments():
+def parse_evaluation_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="PPO Mario Evaluation")
     parser.add_argument("--model_path", type=str, default="mario_ppo_final.zip",
                         help="Path to the serialized model weights.")
@@ -60,7 +67,8 @@ def parse_evaluation_arguments():
     return parser.parse_args()
 
 
-def run_episode(vec_env, model, max_steps, on_step=None):
+def run_episode(vec_env: VecEnv, model: PPO, max_steps: int,
+                on_step: Callable[[dict[str, Any], int, float], None] | None = None) -> dict[str, Any]:
     """
     Plays one episode with the deterministic policy and returns its outcome.
     Ends on flag capture, on death, or after max_steps. If given, on_step is
@@ -92,7 +100,7 @@ def run_episode(vec_env, model, max_steps, on_step=None):
     return {"cleared": cleared, "reward": total_reward, "steps": steps, "max_x": max_x}
 
 
-def summarize_episodes(results):
+def summarize_episodes(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregates run_episode() outcomes into clear-rate and progress statistics."""
     n = len(results)
     return {
@@ -105,7 +113,7 @@ def summarize_episodes(results):
     }
 
 
-def draw_overlay(bgr_frame, x_pos, score, action_name, total_reward):
+def draw_overlay(bgr_frame: np.ndarray, x_pos: int, score: int, action_name: str, total_reward: float) -> None:
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(bgr_frame, f"X: {x_pos}", (5, 20), font, 0.4, (0, 255, 255), 1, cv2.LINE_AA)
     cv2.putText(bgr_frame, f"Score: {score}", (5, 35), font, 0.4, (255, 255, 0), 1, cv2.LINE_AA)
@@ -113,13 +121,13 @@ def draw_overlay(bgr_frame, x_pos, score, action_name, total_reward):
     cv2.putText(bgr_frame, f"Reward: {total_reward:.0f}", (5, 65), font, 0.4, (0, 255, 0), 1, cv2.LINE_AA)
 
 
-def level_tag(env_id):
+def level_tag(env_id: str) -> str:
     """SuperMarioBros-1-2-v0 -> 1-2 (falls back to the full ID)."""
     match = re.search(r"-(\d+-\d+)-v\d+$", env_id)
     return match.group(1) if match else env_id
 
 
-def output_paths(video_output, env_id, multi_level):
+def output_paths(video_output: str, env_id: str, multi_level: bool) -> tuple[str, str]:
     """Returns (mp4 path, gif path); multi-level runs get a per-level suffix."""
     stem, ext = os.path.splitext(video_output)
     if multi_level:
@@ -127,7 +135,8 @@ def output_paths(video_output, env_id, multi_level):
     return stem + (ext or ".mp4"), stem + ".gif"
 
 
-def evaluate_level(model, env_id, args, movement, video_path, gif_path):
+def evaluate_level(model: PPO, env_id: str, args: argparse.Namespace, movement: list[list[str]],
+                   video_path: str, gif_path: str) -> list[dict[str, Any]]:
     """Records episode 1 on a deterministic env, then samples the remaining
     episodes with random no-op starts. Returns the list of episode outcomes."""
 
@@ -141,7 +150,7 @@ def evaluate_level(model, env_id, args, movement, video_path, gif_path):
     video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (256, 240))
     gif = GifRecorder(gif_path, fps=fps, every=gif_stride(args.video_speed))
 
-    def record(info, action_int, total_reward):
+    def record(info: dict[str, Any], action_int: int, total_reward: float) -> None:
         bgr_frame = cv2.cvtColor(inner_env.render(mode="rgb_array"), cv2.COLOR_RGB2BGR)
         action_name = str(movement[action_int]) if action_int < len(movement) else "UNKNOWN"
         draw_overlay(bgr_frame, int(info.get("x_pos", 0)), int(info.get("score", 0)), action_name, total_reward)
@@ -168,13 +177,13 @@ def evaluate_level(model, env_id, args, movement, video_path, gif_path):
     return results
 
 
-def print_episode(index, result):
+def print_episode(index: int, result: dict[str, Any]) -> None:
     outcome = "CLEARED" if result["cleared"] else "DIED"
     print(f"  Episode {index} [{outcome}]: reward {result['reward']:.0f}, "
           f"{result['steps']} steps, max X {result['max_x']}")
 
 
-def format_summary_table(per_level):
+def format_summary_table(per_level: dict[str, dict[str, Any]]) -> str:
     """Plain-text table of per-level statistics, one row per level."""
     lines = [f"{'Level':<24}{'Clear rate':>11}{'Mean reward':>13}{'Mean max X':>12}{'Best X':>8}"]
     for env_id, stats in per_level.items():
@@ -183,7 +192,7 @@ def format_summary_table(per_level):
     return "\n".join(lines)
 
 
-def export_evaluation_video():
+def export_evaluation_video() -> None:
     args = parse_evaluation_arguments()
     levels = [e.strip() for e in args.env_id.split(",")]
 

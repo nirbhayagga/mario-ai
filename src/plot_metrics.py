@@ -6,6 +6,8 @@ the unshaped evaluation reward recorded by EvalCallback. Multiple event files
 (e.g. from resumed training runs) are merged by step number.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
@@ -31,7 +33,7 @@ PANELS = [
 REQUIRED_ANY = (TRAIN_REWARD_TAG, EVAL_REWARD_TAG)
 
 
-def find_event_files(log_dir):
+def find_event_files(log_dir: str) -> list[str]:
     """SB3 creates a new event file per learn() call, so resumed runs have several."""
     event_files = []
     for root, _, files in os.walk(log_dir):
@@ -39,7 +41,7 @@ def find_event_files(log_dir):
     return sorted(event_files, key=os.path.getmtime)
 
 
-def load_scalars(log_dir):
+def load_scalars(log_dir: str) -> dict[str, list[tuple[int, float]]]:
     """Returns {tag: [(step, value), ...]} merged across all event files, sorted by step."""
     scalars = {}
     for event_file in find_event_files(log_dir):
@@ -50,7 +52,7 @@ def load_scalars(log_dir):
     return {tag: sorted(points) for tag, points in scalars.items()}
 
 
-def plot_training_curves(log_dir, output_path):
+def plot_training_curves(log_dir: str, output_path: str) -> bool:
     """Plots one panel per available reward tag. Returns False if neither exists."""
     print(f"Searching for logs in {log_dir}...")
     scalars = load_scalars(log_dir)

@@ -3,6 +3,10 @@ Super Mario Bros RL Pipeline
 Unified entry point for training, evaluation, validation, and interactive play.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import argparse
 import json
 import os
@@ -10,7 +14,7 @@ import subprocess
 import sys
 
 
-def run_command(command):
+def run_command(command: list[str]) -> None:
     """Executes a shell command, streaming output to the terminal."""
     print(f"Executing: {' '.join(command)}")
     try:
@@ -20,7 +24,7 @@ def run_command(command):
         sys.exit(e.returncode)
 
 
-def load_run_config(run_dir):
+def load_run_config(run_dir: str) -> dict[str, Any]:
     """Reads the run_config.json written by train.py, or {} if there is none."""
     path = os.path.join(run_dir, "run_config.json")
     if not os.path.exists(path):
@@ -29,7 +33,7 @@ def load_run_config(run_dir):
         return json.load(f)
 
 
-def map_level(level_str):
+def map_level(level_str: str) -> str:
     """Converts shorthand level notation (e.g. '1-1') to the full Gym ID."""
     level_str = level_str.strip()
     if "-v" in level_str:
@@ -37,7 +41,8 @@ def map_level(level_str):
     return f"SuperMarioBros-{level_str}-v0"
 
 
-def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_override=None):
+def build_train_command(python_cmd: list[str], args: argparse.Namespace, env_id: str, output_dir: str,
+                        unknown: list[str], n_envs_override: int | None = None) -> list[str]:
     """Builds the train.py subprocess command with all flags properly forwarded."""
     cmd = python_cmd + [
         "src/train.py",
@@ -63,7 +68,7 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
     return cmd
 
 
-def build_validate_command(python_cmd, args, env_id):
+def build_validate_command(python_cmd: list[str], args: argparse.Namespace, env_id: str) -> list[str]:
     """Builds the validate.py subprocess command."""
     cmd = python_cmd + [
         "src/validate.py",
@@ -75,7 +80,8 @@ def build_validate_command(python_cmd, args, env_id):
     return cmd
 
 
-def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, extra):
+def build_evaluate_command(python_cmd: list[str], args: argparse.Namespace, env_id: str, model_path: str,
+                           video_output: str, extra: list[str]) -> list[str]:
     """Builds the evaluate.py subprocess command."""
     cmd = python_cmd + [
         "src/evaluate.py",
@@ -93,7 +99,8 @@ def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, e
     return cmd + extra
 
 
-def build_visualize_command(python_cmd, args, env_id, checkpoint_dir, output_path, extra):
+def build_visualize_command(python_cmd: list[str], args: argparse.Namespace, env_id: str, checkpoint_dir: str,
+                            output_path: str, extra: list[str]) -> list[str]:
     """Builds the visualize_progress.py subprocess command."""
     return python_cmd + [
         "src/visualize_progress.py",
@@ -104,7 +111,7 @@ def build_visualize_command(python_cmd, args, env_id, checkpoint_dir, output_pat
     ] + extra
 
 
-def build_plot_command(python_cmd, output_dir, extra):
+def build_plot_command(python_cmd: list[str], output_dir: str, extra: list[str]) -> list[str]:
     """Builds the plot_metrics.py subprocess command."""
     return python_cmd + [
         "src/plot_metrics.py",
@@ -113,7 +120,7 @@ def build_plot_command(python_cmd, output_dir, extra):
     ] + extra
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Mario RL Pipeline Orchestrator")
     parser.add_argument(
         "--mode",

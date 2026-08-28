@@ -4,13 +4,17 @@ Constructs the wrapped gym-super-mario-bros environment with observation
 transformations required for PPO training with a CNN policy.
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
 import numpy as np
 import gym
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 from nes_py.wrappers import JoypadSpace
 from gym.wrappers import GrayScaleObservation, ResizeObservation
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, VecMonitor
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv, VecFrameStack, VecMonitor
 
 
 class CustomRewardWrapper(gym.Wrapper):
@@ -25,12 +29,12 @@ class CustomRewardWrapper(gym.Wrapper):
     Applied BEFORE SkipFrame, so frame counts are real NES frames.
     """
 
-    def __init__(self, env):
+    def __init__(self, env: gym.Env) -> None:
         super(CustomRewardWrapper, self).__init__(env)
         self.last_x = 0
         self.x_stuck_frames = 0
 
-    def step(self, action):
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, dict[str, Any]]:
         state, reward, done, info = self.env.step(action)
 
         x_pos = info.get('x_pos', 0)
@@ -55,7 +59,7 @@ class CustomRewardWrapper(gym.Wrapper):
 
         return state, reward, done, info
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Any) -> np.ndarray:
         self.last_x = 0
         self.x_stuck_frames = 0
         return self.env.reset(**kwargs)
@@ -67,12 +71,12 @@ class RewardClipWrapper(gym.RewardWrapper):
     Applied AFTER SkipFrame so the accumulated 4-frame reward is clipped.
     """
 
-    def __init__(self, env, low=-15.0, high=15.0):
+    def __init__(self, env: gym.Env, low: float = -15.0, high: float = 15.0) -> None:
         super(RewardClipWrapper, self).__init__(env)
         self.low = low
         self.high = high
 
-    def reward(self, reward):
+    def reward(self, reward: float) -> float:
         return float(np.clip(reward, self.low, self.high))
 
 
@@ -85,16 +89,16 @@ class NoopResetEnv(gym.Wrapper):
     give every worker the same no-op sequence, and seed() makes it reproducible.
     """
 
-    def __init__(self, env, noop_max=30):
+    def __init__(self, env: gym.Env, noop_max: int = 30) -> None:
         super(NoopResetEnv, self).__init__(env)
         self.noop_max = noop_max
         self.rng = np.random.RandomState()
 
-    def seed(self, seed=None):
+    def seed(self, seed: int | None = None) -> list[int]:
         self.rng = np.random.RandomState(seed)
         return self.env.seed(seed)
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: Any) -> np.ndarray:
         self.env.reset(**kwargs)
         noops = self.rng.randint(1, self.noop_max + 1)
         obs = None
@@ -115,14 +119,14 @@ class SkipFrame(gym.Wrapper):
     This is the standard MaxAndSkip technique from the original DQN paper.
     """
 
-    def __init__(self, env, skip=4):
+    def __init__(self, env: gym.Env, skip: int = 4) -> None:
         super(SkipFrame, self).__init__(env)
         self._skip = skip
         self._obs_buffer = np.zeros(
             (2,) + env.observation_space.shape, dtype=env.observation_space.dtype
         )
 
-    def step(self, action):
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, dict[str, Any]]:
         total_reward = 0.0
         done = False
         for i in range(self._skip):
@@ -138,9 +142,9 @@ class SkipFrame(gym.Wrapper):
         return max_frame, total_reward, done, info
 
 
-def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
-                             use_custom_reward=False, use_noop=False, action_space="simple",
-                             subproc=True):
+def create_mario_environment(env_id: str | list[str] = "SuperMarioBros-v0", n_envs: int = 1,
+                             use_custom_reward: bool = False, use_noop: bool = False, action_space: str = "simple",
+                             subproc: bool = True) -> VecEnv:
     """
     Builds the full environment stack:
       [NoopReset] -> JoypadSpace -> [CustomReward] -> SkipFrame -> [RewardClip]
@@ -161,8 +165,8 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
     it does not spawn workers that sit idle between evaluations.
     """
 
-    def make_env(target_id):
-        def _init():
+    def make_env(target_id: str) -> Callable[[], gym.Env]:
+        def _init() -> gym.Env:
             env = gym_super_mario_bros.make(target_id)
             if use_noop:
                 env = NoopResetEnv(env)
