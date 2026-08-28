@@ -3,6 +3,7 @@ Tests for checkpoint selection in src/visualize_progress.py. Skipped if the
 RL stack is not installed (the module imports stable-baselines3 at load).
 """
 
+import numpy as np
 import pytest
 
 vp = pytest.importorskip("visualize_progress")
@@ -39,3 +40,15 @@ def test_selection_with_fewer_than_max_returns_all_sorted():
 
 def test_selection_single_file():
     assert vp.select_checkpoints([ckpt(5)], max_models=4) == [ckpt(5)]
+
+
+def test_gif_frame_halves_resolution_and_converts_to_rgb():
+    bgr = np.zeros((480, 512, 3), np.uint8)
+    bgr[..., 0] = 255  # pure blue in BGR
+    rgb = vp.gif_frame(bgr, scale=0.5)
+    assert rgb.shape == (240, 256, 3)
+    assert tuple(rgb[0, 0]) == (0, 0, 255)  # blue lands in the R,G,B blue channel
+
+
+def test_gif_frame_never_collapses_to_zero_size():
+    assert vp.gif_frame(np.zeros((2, 2, 3), np.uint8), scale=0.1).shape == (1, 1, 3)

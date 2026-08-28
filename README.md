@@ -146,7 +146,7 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 | `validate` | Confirms the environment initializes and can step without crashing. | No | Pass/fail output. |
 | `train` | Runs PPO training on one or more levels. | No (optional `--load_model` to resume) | Model weights, checkpoints, TensorBoard logs. |
 | `evaluate` | For every level of the run: records one gameplay episode with metadata overlay, then runs `--eval_episodes` episodes for a per-level clear-rate table. | Yes (`--model_path` or `--run_dir`) | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
-| `visualize` | Renders up to 4 checkpoints in a side-by-side grid video. | Yes (`--checkpoint_dir`) | `.mp4` montage video. |
+| `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) in a side-by-side grid video, plus a half-resolution GIF for READMEs. | Yes (`--checkpoint_dir` or `--run_dir`) | `.mp4` montage video and `.gif`. |
 | `plot` | Plots training episode reward and evaluation reward from TensorBoard logs. | No | `.png` plot file. |
 | `dashboard` | Launches TensorBoard in the browser. | No | Web UI. |
 | `manual` | Human-controlled gameplay via keyboard. Resets on death. Press Escape to quit. | No | None. |
@@ -271,7 +271,7 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
     * `evaluation_run.mp4` / `evaluation_run.gif`: Gameplay video with overlay (the GIF embeds in GitHub READMEs). Multi-level runs write one pair per level, e.g. `evaluation_run_1-2.mp4`.
     * `evaluation_summary.json`: Per-level clear rate, mean reward, and max distance across `--eval_episodes` episodes.
-    * `progress_montage.mp4`: Side-by-side checkpoint comparison.
+    * `progress_montage.mp4` / `progress_montage.gif`: Side-by-side checkpoint comparison (the GIF is half resolution at 10 fps so it stays embeddable).
     * `reward_curve.png`: Training and evaluation reward curves.
 
 ---

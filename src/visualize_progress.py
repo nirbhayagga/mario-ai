@@ -1,6 +1,7 @@
 """
 Progress Visualization Module
-Renders multiple model checkpoints into a single side-by-side montage video.
+Renders multiple model checkpoints into a single side-by-side montage video,
+plus a reduced GIF of it that is small enough to embed in a README.
 """
 
 import argparse
@@ -10,7 +11,14 @@ import glob
 import re
 import numpy as np
 from stable_baselines3 import PPO
+
 from env_setup import create_mario_environment
+from media import GifRecorder
+
+# The full montage (512x480 at 30 fps for 1000 steps) is far too large as a
+# GIF, so the GIF is written at half resolution and a third of the frames.
+MONTAGE_GIF_SCALE = 0.5
+MONTAGE_GIF_STRIDE = 3
 
 
 def checkpoint_step(path):
@@ -33,6 +41,13 @@ def select_checkpoints(model_files, max_models=4):
     last = len(ordered) - 1
     indices = [round(i * last / (max_models - 1)) for i in range(max_models)]
     return [ordered[i] for i in indices]
+
+
+def gif_frame(bgr_frame, scale=MONTAGE_GIF_SCALE):
+    """Downscales a BGR video frame and converts it to RGB for the GIF recorder."""
+    height, width = bgr_frame.shape[:2]
+    size = (max(1, int(round(width * scale))), max(1, int(round(height * scale))))
+    return cv2.cvtColor(cv2.resize(bgr_frame, size, interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
 
 
 def create_montage_video(checkpoint_dir, output_path,
@@ -69,6 +84,8 @@ def create_montage_video(checkpoint_dir, output_path,
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video_writer = cv2.VideoWriter(output_path, fourcc, 30.0, (out_w, out_h))
+    gif_path = os.path.splitext(output_path)[0] + ".gif"
+    gif = GifRecorder(gif_path, fps=30.0, every=MONTAGE_GIF_STRIDE)
 
     observations = [env.reset() for env in envs]
 
@@ -99,11 +116,13 @@ def create_montage_video(checkpoint_dir, output_path,
 
         montage = np.vstack(rows)
         video_writer.write(montage)
+        gif.add(gif_frame(montage))
 
     video_writer.release()
+    gif.save()
     for env in envs:
         env.close()
-    print("Montage generation complete.")
+    print(f"Montage generation complete: {output_path} and {gif_path}")
 
 
 if __name__ == "__main__":
