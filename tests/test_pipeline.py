@@ -110,6 +110,13 @@ def test_evaluate_prefers_best_model_when_present(run, tmp_path):
     assert cmd[cmd.index("--model_path") + 1].endswith("best_model.zip")
 
 
+def test_evaluate_forwards_episode_count(run):
+    (cmd,) = run("--mode", "evaluate", "--model_path", "m.zip")
+    assert cmd[cmd.index("--episodes") + 1] == "10"
+    (cmd,) = run("--mode", "evaluate", "--model_path", "m.zip", "--eval_episodes", "25")
+    assert cmd[cmd.index("--episodes") + 1] == "25"
+
+
 def test_evaluate_explicit_model_path_wins(run):
     (cmd,) = run("--mode", "evaluate", "--model_path", "custom.zip")
     assert cmd[cmd.index("--model_path") + 1] == "custom.zip"

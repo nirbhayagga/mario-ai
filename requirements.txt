@@ -6,6 +6,7 @@ gym-super-mario-bros==7.4.0
 nes-py==8.2.1
 stable-baselines3==1.8.0
 opencv-python
+pillow
 tensorboard
 rich
 pygame

@@ -57,7 +57,8 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--video_output` | none | Destination path for exported `.mp4` video files. |
 | `--save_freq` | auto | Checkpoint save frequency. Auto-computed for ~15 checkpoints if not set. |
 | `--n_epochs` | `10` | Number of PPO optimization epochs per rollout. |
-| `--max_steps` | `3000` | Maximum evaluation steps (stops earlier on level clear). |
+| `--max_steps` | `3000` | Maximum evaluation steps per episode (stops earlier on level clear). |
+| `--eval_episodes` | `10` | Episodes run in `evaluate` mode for the clear-rate summary. The first is recorded; the rest use random no-op starts. |
 
 ### PPO Hyperparameters
 
@@ -138,9 +139,9 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 | :--- | :--- | :--- | :--- |
 | `validate` | Confirms the environment initializes and can step without crashing. | No | Pass/fail output. |
 | `train` | Runs PPO training on one or more levels. | No (optional `--load_model` to resume) | Model weights, checkpoints, TensorBoard logs. |
-| `evaluate` | Loads a trained model and records a gameplay video with metadata overlay. Runs until level clear or `--max_steps`. | Yes (`--model_path`) | `.mp4` video file. |
+| `evaluate` | Loads a trained model, records one gameplay episode with metadata overlay, then runs `--eval_episodes` episodes for a clear-rate summary. | Yes (`--model_path`) | `.mp4` + `.gif` video, `evaluation_summary.json`. |
 | `visualize` | Renders up to 4 checkpoints in a side-by-side grid video. | Yes (`--checkpoint_dir`) | `.mp4` montage video. |
-| `plot` | Generates a static reward curve from TensorBoard logs. | No | `.png` plot file. |
+| `plot` | Plots training episode reward and evaluation reward from TensorBoard logs. | No | `.png` plot file. |
 | `dashboard` | Launches TensorBoard in the browser. | No | Web UI. |
 | `manual` | Human-controlled gameplay via keyboard. Resets on death. Press Escape to quit. | No | None. |
 | `all` | Runs validate, train, evaluate, visualize, and plot in sequence (default). | No | All artifacts. |
@@ -180,9 +181,9 @@ Train on multiple levels simultaneously:
 python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
 ```
 
-Generate a gameplay video with metadata overlay:
+Generate a gameplay video with metadata overlay and a 10-episode clear-rate summary:
 ```bash
-python run_pipeline.py --mode evaluate --model_path runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip
+python run_pipeline.py --mode evaluate --model_path runs/1-1_5000000steps_rew_lr/best_model.zip
 ```
 
 Render a side-by-side checkpoint comparison montage:
@@ -256,6 +257,7 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `eval_logs/`: Evaluation results from `EvalCallback`.
     * `best_model.zip`: Best-performing model weights (selected by periodic evaluation on unshaped game reward with random no-op starts, protects against catastrophic forgetting).
     * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
-    * `evaluation_run.mp4`: Gameplay video with overlay.
+    * `evaluation_run.mp4` / `evaluation_run.gif`: Gameplay video with overlay (the GIF embeds in GitHub READMEs).
+    * `evaluation_summary.json`: Clear rate, mean reward, and max distance across `--eval_episodes` episodes.
     * `progress_montage.mp4`: Side-by-side checkpoint comparison.
-    * `reward_curve.png`: Static reward plot.
+    * `reward_curve.png`: Training and evaluation reward curves.

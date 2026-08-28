@@ -7,8 +7,11 @@ runs/
 *.pt
 *.zip
 *.mp4
+*.gif
 *.log
 *.png
+!assets/*.gif
+!assets/*.png
 .DS_Store
 pip_install_log.txt
 python_ver.log
