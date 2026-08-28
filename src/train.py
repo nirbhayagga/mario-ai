@@ -134,20 +134,25 @@ def execute_training():
 
     if args.load_model:
         print(f"Resuming from: {args.load_model}")
+        # CLI flags take precedence over whatever was saved in the checkpoint.
+        # They must be passed as load() kwargs: SB3 rebuilds the LR/clip_range
+        # schedules and the rollout buffer inside load(), so assigning these
+        # attributes afterwards is ignored (learning_rate) or crashes on the
+        # first update (clip_range has already become a callable).
         model = PPO.load(
             args.load_model,
             env=env,
             device=args.device,
             tensorboard_log=tb_log,
+            learning_rate=lr,
+            clip_range=args.clip_range,
+            ent_coef=args.ent_coef,
+            batch_size=args.batch_size,
+            n_steps=args.n_steps,
+            n_epochs=args.n_epochs,
+            gamma=args.gamma,
+            vf_coef=args.vf_coef,
         )
-        # Apply ALL current CLI settings to the resumed model so flags
-        # always take precedence over whatever was saved in the checkpoint.
-        model.learning_rate = lr
-        model.clip_range = args.clip_range
-        model.ent_coef = args.ent_coef
-        model.batch_size = args.batch_size
-        model.n_steps = args.n_steps
-        model.n_epochs = args.n_epochs
     else:
         print("Initializing new PPO model.")
 
