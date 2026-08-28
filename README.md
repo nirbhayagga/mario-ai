@@ -33,6 +33,8 @@ ruff check .     # lint
 pytest           # unit tests: CLI routing, reward/frame wrappers, checkpoint selection
 ```
 
+The same lint and test steps run in CI (`.github/workflows/ci.yml`) on every push.
+
 ---
 
 ## Usage
@@ -270,3 +272,9 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `evaluation_summary.json`: Per-level clear rate, mean reward, and max distance across `--eval_episodes` episodes.
     * `progress_montage.mp4`: Side-by-side checkpoint comparison.
     * `reward_curve.png`: Training and evaluation reward curves.
+
+---
+
+## License
+
+MIT. See `LICENSE`.
