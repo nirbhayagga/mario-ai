@@ -16,14 +16,14 @@ def plot_reward_curve(log_dir, output_path):
     and plots a combined reward curve.
     """
     print(f"Searching for logs in {log_dir}...")
-    
+
     # Find all event files (SB3 creates new ones on resume / mid-training)
     event_files = []
     for root, _, files in os.walk(log_dir):
         for f in files:
             if "tfevents" in f:
                 event_files.append(os.path.join(root, f))
-    
+
     if not event_files:
         print("No TensorBoard events found.")
         return
@@ -79,15 +79,17 @@ def plot_reward_curve(log_dir, output_path):
     plt.ylabel("Mean Reward")
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.legend()
-    
+
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     plt.savefig(output_path)
     print(f"Plot saved to {output_path}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Mario Metric Plotter")
-    parser.add_argument("--log_dir", type=str, default="tensorboard_logs", help="Directory containing TensorBoard logs.")
-    parser.add_argument("--output_path", type=str, default="logs/reward_curve.png", help="Path to save the output plot.")
-    
+    parser.add_argument("--log_dir", type=str, default="tensorboard_logs",
+                        help="Directory containing TensorBoard logs.")
+    parser.add_argument("--output_path", type=str, default="logs/reward_curve.png",
+                        help="Path to save the output plot.")
+
     args = parser.parse_args()
     plot_reward_curve(args.log_dir, args.output_path)

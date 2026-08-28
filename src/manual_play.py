@@ -25,7 +25,7 @@ def launch_manual_gameplay():
     env = gym_super_mario_bros.make(args.env_id)
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
 
-    observation = env.reset()
+    env.reset()
 
     pygame.init()
     screen_width = 256 * 2
@@ -80,9 +80,9 @@ def launch_manual_gameplay():
         elif left and jump and sprint:
             action = 9  # Left + Jump + Sprint
         elif left and jump:
-            action = 7  # Left + Jump 
+            action = 7  # Left + Jump
         elif left and sprint:
-            action = 8  # Left + Sprint           
+            action = 8  # Left + Sprint
         elif left:
             action = 6  # Left
         elif jump:
@@ -94,11 +94,11 @@ def launch_manual_gameplay():
         else:
             action = 0  # NOOP (stand still)
 
-        observation, reward, done, info = env.step(action)
+        _, _, done, _ = env.step(action)
 
         # Reset on death instead of ending the session
         if done:
-            observation = env.reset()
+            env.reset()
 
         rendered_frame = env.render(mode='rgb_array')
         surface = pygame.surfarray.make_surface(rendered_frame.swapaxes(0, 1))

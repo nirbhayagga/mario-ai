@@ -26,6 +26,13 @@ pip install "pip<24.1" "setuptools==65.5.0" "wheel==0.38.4"
 pip install -r requirements.txt
 ```
 
+### Step 3 (optional): Development Tools
+```bash
+pip install -r requirements-dev.txt
+ruff check .     # lint
+pytest           # unit tests: CLI routing, reward/frame wrappers, checkpoint selection
+```
+
 ---
 
 ## Usage

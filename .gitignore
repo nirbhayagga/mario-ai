@@ -1,5 +1,7 @@
 venv/
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 *.pyc
 runs/
 *.pt
@@ -16,6 +18,7 @@ python_ver.log
 !README.md
 *.txt
 !requirements.txt
+!requirements-dev.txt
 
 # Agent tooling / chat exports
 .claude/
