@@ -127,37 +127,15 @@ class SkipFrame(gym.Wrapper):
         return max_frame, total_reward, done, info
 
 
-class EpisodicLifeEnv(gym.Wrapper):
-    """
-    Treats each life loss as a terminal state. Without this wrapper, Mario
-    respawns after death without a done signal, breaking the MDP assumption
-    that the agent's state should not teleport discontinuously.
-    """
-
-    def __init__(self, env):
-        super(EpisodicLifeEnv, self).__init__(env)
-        self.lives = 0
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        lives = info.get('life', 0)
-        if self.lives > lives > 0:
-            done = True
-        self.lives = lives
-        return obs, reward, done, info
-
-    def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs)
-        self.lives = 0
-        return obs
-
-
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
                              use_custom_reward=False, use_noop=False, action_space="simple"):
     """
     Builds the full environment stack:
-      JoypadSpace -> EpisodicLife -> [CustomReward] -> SkipFrame -> [RewardClip]
+      [NoopReset] -> JoypadSpace -> [CustomReward] -> SkipFrame -> [RewardClip]
       -> GrayScale -> Resize -> VecFrameStack(4)
+
+    Stage-specific env IDs (SuperMarioBros-<w>-<s>-v<n>) already return done on
+    death and on flag capture, so no episodic-life wrapper is needed.
 
     CustomReward is placed BEFORE SkipFrame so it sees individual frames.
     RewardClip is placed AFTER SkipFrame so the accumulated reward is clipped.
@@ -175,7 +153,6 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
             else:
                 movement = SIMPLE_MOVEMENT
             env = JoypadSpace(env, movement)
-            env = EpisodicLifeEnv(env)
             if use_custom_reward:
                 env = CustomRewardWrapper(env)
             env = SkipFrame(env, skip=4)

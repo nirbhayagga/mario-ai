@@ -10,7 +10,4 @@ tensorboard
 rich
 pygame
 torch
-torchvision
-pandas
 matplotlib
-tensorboard-reducer

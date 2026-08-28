@@ -7,7 +7,6 @@ all scalars by step number.
 
 import os
 import argparse
-import pandas as pd
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
