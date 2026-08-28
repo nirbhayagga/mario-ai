@@ -139,6 +139,20 @@ class TestNoopResetEnv:
         assert frames <= set(range(1, 31))
         assert len(frames) > 1
 
+    def test_seed_makes_noop_sequence_reproducible(self):
+        def noop_counts(seed):
+            base = ScriptedMario()
+            env = env_setup.NoopResetEnv(base)
+            env.seed(seed)
+            counts = []
+            for _ in range(10):
+                env.reset()
+                counts.append(base.frame)
+            return counts
+
+        assert noop_counts(123) == noop_counts(123)
+        assert noop_counts(123) != noop_counts(456)
+
 
 class TestEnvironmentStack:
     def test_single_env_observation_shape(self):

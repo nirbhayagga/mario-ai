@@ -14,6 +14,7 @@ import os
 import cv2
 from gym_super_mario_bros.actions import COMPLEX_MOVEMENT, RIGHT_ONLY, SIMPLE_MOVEMENT
 from stable_baselines3 import PPO
+from stable_baselines3.common.utils import set_random_seed
 
 from env_setup import create_mario_environment
 from media import GifRecorder
@@ -38,6 +39,8 @@ def parse_evaluation_arguments():
                              "the rest use random no-op starts and are not rendered.")
     parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
                         help="Action space to use (simple, complex, or right_only).")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed for the random no-op starts of the extra episodes. Unseeded if omitted.")
     return parser.parse_args()
 
 
@@ -108,6 +111,8 @@ def export_evaluation_video():
         movement = SIMPLE_MOVEMENT
 
     model = PPO.load(args.model_path, device=args.device)
+    if args.seed is not None:
+        set_random_seed(args.seed)
 
     # Episode 1: deterministic start, recorded. n_envs=1 -> DummyVecEnv, whose
     # .envs[0] exposes the wrapped gym env; render() passes through the
@@ -140,6 +145,8 @@ def export_evaluation_video():
     # Remaining episodes: random no-op starts for variety, no rendering.
     if args.episodes > 1:
         sample_env = create_mario_environment(env_id=target_env, action_space=args.action_space, use_noop=True)
+        if args.seed is not None:
+            sample_env.seed(args.seed)
         for i in range(2, args.episodes + 1):
             result = run_episode(sample_env, model, args.max_steps)
             results.append(result)

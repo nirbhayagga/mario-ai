@@ -5,10 +5,15 @@ with TensorBoard logging and periodic checkpointing.
 """
 
 import argparse
+import json
 import os
+import subprocess
+import sys
+from datetime import datetime
+
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
-from stable_baselines3.common.utils import get_device
+from stable_baselines3.common.utils import get_device, set_random_seed
 from callbacks import EpisodeStatsCallback
 from env_setup import create_mario_environment
 
@@ -51,7 +56,37 @@ def parse_training_arguments():
                         help="PPO clipping parameter (tighter = more stable).")
     parser.add_argument("--output_dir", type=str, default="./runs/default_run",
                         help="Base directory for models, checkpoints, and logs.")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed for PPO, numpy/torch, and every environment (including no-op starts). "
+                             "Unseeded if omitted.")
     return parser.parse_args()
+
+
+def git_commit():
+    """Short hash of the checked-out commit, or None outside a git checkout."""
+    try:
+        result = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip()
+
+
+def build_run_config(args):
+    """Everything needed to reproduce or locate this run: all flags plus provenance."""
+    config = dict(vars(args))
+    config.update({
+        "command": " ".join(sys.argv),
+        "git_commit": git_commit(),
+        "created": datetime.now().isoformat(timespec="seconds"),
+    })
+    return config
+
+
+def write_run_config(output_dir, config):
+    path = os.path.join(output_dir, "run_config.json")
+    with open(path, "w") as f:
+        json.dump(config, f, indent=2)
+    return path
 
 
 def linear_schedule(initial_value):
@@ -77,7 +112,10 @@ def execute_training():
     use_custom_reward = not args.no_custom_reward
     use_lr_schedule = not args.no_lr_schedule
 
-    print(f"Custom reward: {use_custom_reward} | LR schedule: {use_lr_schedule}")
+    print(f"Custom reward: {use_custom_reward} | LR schedule: {use_lr_schedule} | Seed: {args.seed}")
+
+    if args.seed is not None:
+        set_random_seed(args.seed)
 
     env = create_mario_environment(
         env_id=target_envs,
@@ -88,6 +126,7 @@ def execute_training():
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
+    print(f"Run config written to {write_run_config(args.output_dir, build_run_config(args))}")
     tb_log = os.path.join(args.output_dir, "tensorboard")
     ckpt_dir = os.path.join(args.output_dir, "checkpoints")
 
@@ -121,6 +160,9 @@ def execute_training():
         use_noop=True,
         action_space=args.action_space,
     )
+    if args.seed is not None:
+        env.seed(args.seed)
+        eval_env.seed(args.seed + 10_000)
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=args.output_dir,
@@ -158,6 +200,7 @@ def execute_training():
             n_epochs=args.n_epochs,
             gamma=args.gamma,
             vf_coef=args.vf_coef,
+            seed=args.seed,
         )
     else:
         print("Initializing new PPO model.")
@@ -174,6 +217,7 @@ def execute_training():
             vf_coef=args.vf_coef,
             max_grad_norm=0.5,
             clip_range=args.clip_range,
+            seed=args.seed,
             device=args.device,
             verbose=1,
             tensorboard_log=tb_log,

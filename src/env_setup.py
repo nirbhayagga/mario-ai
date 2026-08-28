@@ -77,15 +77,26 @@ class RewardClipWrapper(gym.RewardWrapper):
 
 
 class NoopResetEnv(gym.Wrapper):
-    """Randomizes the starting state by executing 1-30 NOOP actions on reset."""
+    """
+    Randomizes the starting state by executing 1-30 NOOP actions on reset.
+
+    Uses its own RandomState rather than numpy's global one: SubprocVecEnv
+    workers are forked with an identical copy of the global RNG, which would
+    give every worker the same no-op sequence, and seed() makes it reproducible.
+    """
 
     def __init__(self, env, noop_max=30):
         super(NoopResetEnv, self).__init__(env)
         self.noop_max = noop_max
+        self.rng = np.random.RandomState()
+
+    def seed(self, seed=None):
+        self.rng = np.random.RandomState(seed)
+        return self.env.seed(seed)
 
     def reset(self, **kwargs):
         self.env.reset(**kwargs)
-        noops = np.random.randint(1, self.noop_max + 1)
+        noops = self.rng.randint(1, self.noop_max + 1)
         obs = None
         for _ in range(noops):
             obs, _, done, _ = self.env.step(0)

@@ -4,8 +4,9 @@ Unified entry point for training, evaluation, validation, and interactive play.
 """
 
 import argparse
-import subprocess
+import json
 import os
+import subprocess
 import sys
 
 
@@ -17,6 +18,15 @@ def run_command(command):
     except subprocess.CalledProcessError as e:
         print(f"Command failed with exit code: {e.returncode}")
         sys.exit(e.returncode)
+
+
+def load_run_config(run_dir):
+    """Reads the run_config.json written by train.py, or {} if there is none."""
+    path = os.path.join(run_dir, "run_config.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        return json.load(f)
 
 
 def map_level(level_str):
@@ -46,6 +56,8 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
         cmd += ["--no_custom_reward"]
     if args.no_lr_schedule:
         cmd += ["--no_lr_schedule"]
+    if args.seed is not None:
+        cmd += ["--seed", str(args.seed)]
     cmd += ["--action_space", args.action_space]
     cmd += unknown
     return cmd
@@ -65,7 +77,7 @@ def build_validate_command(python_cmd, args, env_id):
 
 def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, extra):
     """Builds the evaluate.py subprocess command."""
-    return python_cmd + [
+    cmd = python_cmd + [
         "src/evaluate.py",
         "--model_path", model_path,
         "--video_output", video_output,
@@ -74,7 +86,10 @@ def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, e
         "--max_steps", str(args.max_steps),
         "--episodes", str(args.eval_episodes),
         "--action_space", args.action_space,
-    ] + extra
+    ]
+    if args.seed is not None:
+        cmd += ["--seed", str(args.seed)]
+    return cmd + extra
 
 
 def build_visualize_command(python_cmd, args, env_id, checkpoint_dir, output_path, extra):
@@ -111,8 +126,14 @@ def main():
     )
 
     # Training / Evaluation arguments
-    parser.add_argument("--level", type=str, default="1-1",
-                        help="Mario level (e.g. 1-1, 1-2, 2-1). Comma-separated for multi-level.")
+    parser.add_argument("--level", type=str, default=None,
+                        help="Mario level (e.g. 1-1, 1-2, 2-1). Comma-separated for multi-level. "
+                             "Defaults to 1-1, or to the level recorded in --run_dir's run_config.json.")
+    parser.add_argument("--run_dir", type=str, default=None,
+                        help="Existing run directory. Replaces the derived runs/<...> path and supplies "
+                             "--level/--action_space from its run_config.json when they are not given.")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Random seed for training and evaluation. Unseeded if omitted.")
     parser.add_argument("--total_timesteps", type=int, default=2000000,
                         help="Total timesteps for training.")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
@@ -123,8 +144,9 @@ def main():
                         help="DISABLE stuck penalty, early termination, and reward clipping.")
     parser.add_argument("--no_lr_schedule", action="store_true",
                         help="DISABLE linear learning rate annealing.")
-    parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
-                        help="Action space to use (simple, complex, or right_only).")
+    parser.add_argument("--action_space", type=str, default=None, choices=["simple", "complex", "right_only"],
+                        help="Action space to use (simple, complex, or right_only). "
+                             "Defaults to simple, or to the value in --run_dir's run_config.json.")
     parser.add_argument("--load_model", type=str, default=None,
                         help="Path to a .zip model to resume training from.")
 
@@ -147,28 +169,36 @@ def main():
 
     args, unknown = parser.parse_known_args()
 
-    # Resolve environment IDs
-    if "," in args.level:
-        levels = [map_level(lvl) for lvl in args.level.split(",")]
-        env_id = ",".join(levels)
+    # An existing run's config fills in whatever the command line left out,
+    # so post-training modes do not need the original training flags.
+    run_config = load_run_config(args.run_dir) if args.run_dir else {}
+    if args.action_space is None:
+        args.action_space = run_config.get("action_space", "simple")
+    if args.level is None and "env_id" not in run_config:
+        args.level = "1-1"
+
+    if args.level is not None:
+        env_id = ",".join(map_level(lvl) for lvl in args.level.split(","))
     else:
-        env_id = map_level(args.level)
+        env_id = run_config["env_id"]
 
     python_cmd = [sys.executable]
 
-    # Generate dynamic run ID and output paths
-    base_level = args.level.replace(",", "_")
-    run_id = f"{base_level}_{args.total_timesteps}steps"
-    if not args.no_custom_reward:
-        run_id += "_rew"
-    if not args.no_lr_schedule:
-        run_id += "_lr"
-    if args.load_model:
-        run_id += "_resume"
-    if args.action_space != "simple":
-        run_id += f"_{args.action_space}"
-
-    output_dir = os.path.join("runs", run_id)
+    if args.run_dir:
+        output_dir = args.run_dir
+    else:
+        # Derive the run ID from the flags that shape the experiment
+        base_level = args.level.replace(",", "_")
+        run_id = f"{base_level}_{args.total_timesteps}steps"
+        if not args.no_custom_reward:
+            run_id += "_rew"
+        if not args.no_lr_schedule:
+            run_id += "_lr"
+        if args.load_model:
+            run_id += "_resume"
+        if args.action_space != "simple":
+            run_id += f"_{args.action_space}"
+        output_dir = os.path.join("runs", run_id)
 
     # Resolve paths with fallbacks to the dynamic output directory
     # Prefer best_model.zip (saved by EvalCallback) over the final model

@@ -3,6 +3,7 @@ Tests for run_pipeline.py argument routing. No emulator needed: subprocess.run
 is stubbed and the argv each mode would execute is inspected directly.
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -120,6 +121,50 @@ def test_evaluate_forwards_episode_count(run):
 def test_evaluate_explicit_model_path_wins(run):
     (cmd,) = run("--mode", "evaluate", "--model_path", "custom.zip")
     assert cmd[cmd.index("--model_path") + 1] == "custom.zip"
+
+
+def test_run_dir_supplies_output_dir_and_config_values(run, tmp_path):
+    run_dir = tmp_path / "runs" / "custom"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_config.json").write_text(json.dumps({
+        "env_id": "SuperMarioBros-4-2-v0,SuperMarioBros-4-3-v0",
+        "action_space": "right_only",
+    }))
+    (cmd,) = run("--mode", "evaluate", "--run_dir", str(run_dir))
+    assert cmd[cmd.index("--env_id") + 1] == "SuperMarioBros-4-2-v0,SuperMarioBros-4-3-v0"
+    assert cmd[cmd.index("--action_space") + 1] == "right_only"
+    assert cmd[cmd.index("--model_path") + 1] == str(run_dir / "mario_ppo_final.zip")
+    assert cmd[cmd.index("--video_output") + 1] == str(run_dir / "evaluation_run.mp4")
+
+
+def test_explicit_flags_override_run_config(run, tmp_path):
+    run_dir = tmp_path / "runs" / "custom"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_config.json").write_text(json.dumps({
+        "env_id": "SuperMarioBros-4-2-v0", "action_space": "right_only",
+    }))
+    (cmd,) = run("--mode", "train", "--run_dir", str(run_dir), "--level", "1-1", "--action_space", "complex")
+    assert cmd[cmd.index("--env_id") + 1] == "SuperMarioBros-1-1-v0"
+    assert cmd[cmd.index("--action_space") + 1] == "complex"
+    assert cmd[cmd.index("--output_dir") + 1] == str(run_dir)
+
+
+def test_run_dir_without_config_falls_back_to_defaults(run, tmp_path):
+    (cmd,) = run("--mode", "plot", "--run_dir", str(tmp_path / "empty"))
+    assert cmd[cmd.index("--log_dir") + 1] == str(tmp_path / "empty" / "tensorboard")
+    (cmd,) = run("--mode", "train", "--run_dir", str(tmp_path / "empty"))
+    assert cmd[cmd.index("--env_id") + 1] == "SuperMarioBros-1-1-v0"
+    assert cmd[cmd.index("--action_space") + 1] == "simple"
+
+
+def test_seed_forwarded_only_to_train_and_evaluate(run):
+    for cmd in run("--mode", "all", "--seed", "7"):
+        seeded = "--seed" in cmd
+        assert seeded == (cmd[0] in ("src/train.py", "src/evaluate.py")), cmd
+        if seeded:
+            assert cmd[cmd.index("--seed") + 1] == "7"
+    (cmd,) = run("--mode", "train")
+    assert "--seed" not in cmd
 
 
 def test_device_defaults_to_auto(run):

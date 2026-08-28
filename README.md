@@ -45,6 +45,8 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | :--- | :--- | :--- |
 | `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `manual`, `all` |
 | `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
+| `--run_dir` | none | Existing run directory. Replaces the derived `runs/<...>` path and fills `--level`/`--action_space` from its `run_config.json`, so `evaluate`, `visualize`, `plot`, and `dashboard` do not need the original training flags. |
+| `--seed` | none | Seeds PPO, numpy/torch, and every environment (including random no-op starts). Omit for an unseeded run. |
 | `--device` | `auto` | `auto` (CUDA if available, else CPU), `cuda`, or `cpu`. |
 | `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
 | `--total_timesteps` | `2000000` | Total training steps. |
@@ -181,24 +183,29 @@ Train on multiple levels simultaneously:
 python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
 ```
 
-Generate a gameplay video with metadata overlay and a 10-episode clear-rate summary:
+Generate a gameplay video with metadata overlay and a 10-episode clear-rate summary (level, action space, and model are read from the run directory):
 ```bash
-python run_pipeline.py --mode evaluate --model_path runs/1-1_5000000steps_rew_lr/best_model.zip
+python run_pipeline.py --mode evaluate --run_dir runs/1-1_5000000steps_rew_lr
 ```
 
 Render a side-by-side checkpoint comparison montage:
 ```bash
-python run_pipeline.py --mode visualize --checkpoint_dir runs/1-1_5000000steps_rew_lr/checkpoints
+python run_pipeline.py --mode visualize --run_dir runs/1-1_5000000steps_rew_lr
 ```
 
-Generate a static reward curve:
+Plot the training curves:
 ```bash
-python run_pipeline.py --mode plot --level 1-1
+python run_pipeline.py --mode plot --run_dir runs/1-1_5000000steps_rew_lr
 ```
 
 Launch TensorBoard:
 ```bash
-python run_pipeline.py --mode dashboard --level 1-1
+python run_pipeline.py --mode dashboard --run_dir runs/1-1_5000000steps_rew_lr
+```
+
+Train with a fixed seed so the run can be reproduced exactly on CPU:
+```bash
+python run_pipeline.py --mode train --level 1-1 --seed 42
 ```
 
 Play Mario manually (arrow keys to move, Down to crouch/enter pipe, Space/Up to jump, Shift to sprint, Z to climb, Escape to quit):
@@ -251,7 +258,8 @@ The 32 levels fall into four categories requiring different AI strategies:
 ## Directory Organization
 
 * `src/`: Python source modules.
-* `runs/`: Each experiment generates an isolated folder using the pattern `<level>_<timesteps>steps[_rew][_lr][_resume][_<action_space>]`:
+* `runs/`: Each experiment generates an isolated folder using the pattern `<level>_<timesteps>steps[_rew][_lr][_resume][_<action_space>]` (or the path given by `--run_dir`):
+    * `run_config.json`: Every training flag plus the command line, git commit, and timestamp, so the run can be reproduced and located with `--run_dir`.
     * `tensorboard/`: TensorBoard event logs.
     * `checkpoints/`: Periodic model snapshots.
     * `eval_logs/`: Evaluation results from `EvalCallback`.
