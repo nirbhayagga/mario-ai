@@ -37,7 +37,8 @@ def validate_environment():
             use_custom_reward=use_custom_reward,
         )
         observation = env.reset()
-        observation, reward, done, info = env.step([0])
+        # One action per env: a short list makes SubprocVecEnv block forever.
+        observation, reward, done, info = env.step([0] * env.num_envs)
         env.close()
         print("Validation passed. Environment initialized and stepped successfully.")
         sys.exit(0)
