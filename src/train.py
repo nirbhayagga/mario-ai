@@ -9,6 +9,7 @@ import os
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 from stable_baselines3.common.utils import get_device
+from callbacks import EpisodeStatsCallback
 from env_setup import create_mario_environment
 
 
@@ -131,7 +132,7 @@ def execute_training():
         verbose=1,
     )
 
-    combined_callback = CallbackList([checkpoint_callback, eval_callback])
+    combined_callback = CallbackList([checkpoint_callback, eval_callback, EpisodeStatsCallback()])
 
     lr = args.learning_rate
     if use_lr_schedule:

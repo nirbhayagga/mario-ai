@@ -37,6 +37,17 @@ def test_plot_writes_png_when_reward_tags_exist(tmp_path):
     assert output.stat().st_size > 0
 
 
+def test_plot_adds_panels_for_clear_rate_and_max_x(tmp_path):
+    write_events(tmp_path / "PPO_1", {
+        pm.TRAIN_REWARD_TAG: [(1000, 1.0), (2000, 2.0)],
+        pm.FLAG_RATE_TAG: [(1000, 0.0), (2000, 0.5)],
+        pm.MAX_X_TAG: [(1000, 400.0), (2000, 1200.0)],
+    })
+    output = tmp_path / "reward_curve.png"
+    assert pm.plot_training_curves(str(tmp_path), str(output))
+    assert output.exists()
+
+
 def test_plot_fails_loudly_without_reward_tags(tmp_path, capsys):
     write_events(tmp_path / "PPO_1", {"time/fps": [(100, 200.0)]})
     output = tmp_path / "reward_curve.png"
