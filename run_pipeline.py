@@ -51,6 +51,51 @@ def build_train_command(python_cmd, args, env_id, output_dir, unknown, n_envs_ov
     return cmd
 
 
+def build_validate_command(python_cmd, args, env_id):
+    """Builds the validate.py subprocess command."""
+    cmd = python_cmd + [
+        "src/validate.py",
+        "--env_id", env_id,
+        "--action_space", args.action_space,
+    ]
+    if args.no_custom_reward:
+        cmd += ["--no_custom_reward"]
+    return cmd
+
+
+def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, extra):
+    """Builds the evaluate.py subprocess command."""
+    return python_cmd + [
+        "src/evaluate.py",
+        "--model_path", model_path,
+        "--video_output", video_output,
+        "--device", args.device,
+        "--env_id", env_id,
+        "--max_steps", str(args.max_steps),
+        "--action_space", args.action_space,
+    ] + extra
+
+
+def build_visualize_command(python_cmd, args, env_id, checkpoint_dir, output_path, extra):
+    """Builds the visualize_progress.py subprocess command."""
+    return python_cmd + [
+        "src/visualize_progress.py",
+        "--checkpoint_dir", checkpoint_dir,
+        "--output_path", output_path,
+        "--device", args.device,
+        "--env_id", env_id,
+    ] + extra
+
+
+def build_plot_command(python_cmd, output_dir, extra):
+    """Builds the plot_metrics.py subprocess command."""
+    return python_cmd + [
+        "src/plot_metrics.py",
+        "--log_dir", os.path.join(output_dir, "tensorboard"),
+        "--output_path", os.path.join(output_dir, "reward_curve.png"),
+    ] + extra
+
+
 def main():
     parser = argparse.ArgumentParser(description="Mario RL Pipeline Orchestrator")
     parser.add_argument(
@@ -131,15 +176,12 @@ def main():
     video_output = args.video_output or os.path.join(output_dir, "evaluation_run.mp4")
 
     # ---- Mode dispatch ----
+    # Unrecognized CLI args are forwarded only to the script the mode targets.
+    # In "all" mode they are treated as training hyperparameters, because the
+    # downstream stages use parse_args() and abort on an unknown flag.
 
     if args.mode == "validate":
-        validate_cmd = python_cmd + [
-            "src/validate.py", "--env_id", env_id,
-            "--action_space", args.action_space,
-        ]
-        if args.no_custom_reward:
-            validate_cmd += ["--no_custom_reward"]
-        run_command(validate_cmd)
+        run_command(build_validate_command(python_cmd, args, env_id))
 
     elif args.mode == "train":
         run_command(build_train_command(python_cmd, args, env_id, output_dir, unknown))
@@ -147,34 +189,18 @@ def main():
     elif args.mode == "evaluate":
         model_to_use = args.load_model if args.load_model else model_path
         os.makedirs(os.path.dirname(video_output), exist_ok=True)
-        run_command(python_cmd + [
-            "src/evaluate.py",
-            "--model_path", model_to_use,
-            "--video_output", video_output,
-            "--device", args.device,
-            "--env_id", env_id,
-            "--max_steps", str(args.max_steps),
-            "--action_space", args.action_space,
-        ] + unknown)
+        run_command(build_evaluate_command(
+            python_cmd, args, env_id, model_to_use, video_output, unknown))
 
     elif args.mode == "visualize":
         montage_output = args.video_output or os.path.join(output_dir, "progress_montage.mp4")
         os.makedirs(os.path.dirname(montage_output), exist_ok=True)
-        run_command(python_cmd + [
-            "src/visualize_progress.py",
-            "--checkpoint_dir", checkpoint_dir,
-            "--output_path", montage_output,
-            "--device", args.device,
-            "--env_id", env_id,
-        ] + unknown)
+        run_command(build_visualize_command(
+            python_cmd, args, env_id, checkpoint_dir, montage_output, unknown))
 
     elif args.mode == "plot":
         os.makedirs(output_dir, exist_ok=True)
-        run_command(python_cmd + [
-            "src/plot_metrics.py",
-            "--log_dir", os.path.join(output_dir, "tensorboard"),
-            "--output_path", os.path.join(output_dir, "reward_curve.png"),
-        ] + unknown)
+        run_command(build_plot_command(python_cmd, output_dir, unknown))
 
     elif args.mode == "dashboard":
         run_command(
@@ -186,13 +212,7 @@ def main():
 
     elif args.mode == "all":
         print("\n=== STAGE 1: VALIDATION ===")
-        validate_cmd = python_cmd + [
-            "src/validate.py", "--env_id", env_id,
-            "--action_space", args.action_space,
-        ]
-        if args.no_custom_reward:
-            validate_cmd += ["--no_custom_reward"]
-        run_command(validate_cmd)
+        run_command(build_validate_command(python_cmd, args, env_id))
 
         print("\n=== STAGE 2: TRAINING ===")
         run_command(build_train_command(python_cmd, args, env_id, output_dir, unknown))
@@ -204,31 +224,16 @@ def main():
         model_to_use = best_path if os.path.exists(best_path) else final_path
         print(f"Using model: {model_to_use}")
         os.makedirs(os.path.dirname(video_output), exist_ok=True)
-        run_command(python_cmd + [
-            "src/evaluate.py",
-            "--model_path", model_to_use,
-            "--video_output", video_output,
-            "--device", args.device,
-            "--env_id", env_id,
-            "--max_steps", str(args.max_steps),
-            "--action_space", args.action_space,
-        ] + unknown)
+        run_command(build_evaluate_command(
+            python_cmd, args, env_id, model_to_use, video_output, []))
 
         print("\n=== STAGE 4: VISUALIZATION MONTAGE ===")
-        run_command(python_cmd + [
-            "src/visualize_progress.py",
-            "--checkpoint_dir", checkpoint_dir,
-            "--output_path", os.path.join(output_dir, "progress_montage.mp4"),
-            "--device", args.device,
-            "--env_id", env_id,
-        ] + unknown)
+        run_command(build_visualize_command(
+            python_cmd, args, env_id, checkpoint_dir,
+            os.path.join(output_dir, "progress_montage.mp4"), []))
 
         print("\n=== STAGE 5: PLOTTING METRICS ===")
-        run_command(python_cmd + [
-            "src/plot_metrics.py",
-            "--log_dir", os.path.join(output_dir, "tensorboard"),
-            "--output_path", os.path.join(output_dir, "reward_curve.png"),
-        ] + unknown)
+        run_command(build_plot_command(python_cmd, output_dir, []))
 
         print("\n=== PIPELINE COMPLETE ===")
 

@@ -16,3 +16,9 @@ python_ver.log
 !README.md
 *.txt
 !requirements.txt
+
+# Agent tooling / chat exports
+.claude/
+.cursor/
+AGENTS.md
+CLAUDE.md
