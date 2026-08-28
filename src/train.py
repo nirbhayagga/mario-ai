@@ -152,13 +152,17 @@ def execute_training():
     # may be far worse than intermediate ones. Evaluation uses the raw game
     # reward (no shaping) but keeps random no-op starts: with a deterministic
     # policy on a deterministic env, the n_eval_episodes would otherwise be
-    # identical replays of a single trajectory.
+    # identical replays of a single trajectory. Multi-level runs evaluate on
+    # every level (one in-process env each; SB3 spreads the episodes across
+    # them) so best_model.zip reflects all of them, not just the first.
+    eval_levels = target_envs if isinstance(target_envs, list) else [target_envs]
     eval_env = create_mario_environment(
-        env_id=target_envs if isinstance(target_envs, str) else target_envs[0],
+        env_id=eval_levels if len(eval_levels) > 1 else eval_levels[0],
         n_envs=1,
         use_custom_reward=False,
         use_noop=True,
         action_space=args.action_space,
+        subproc=False,
     )
     if args.seed is not None:
         env.seed(args.seed)
@@ -168,7 +172,7 @@ def execute_training():
         best_model_save_path=args.output_dir,
         log_path=os.path.join(args.output_dir, "eval_logs"),
         eval_freq=save_freq,
-        n_eval_episodes=3,
+        n_eval_episodes=3 * len(eval_levels),
         deterministic=True,
         render=False,
         verbose=1,

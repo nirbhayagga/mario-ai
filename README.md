@@ -105,6 +105,7 @@ python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 \
 * **Timesteps**: ~3-5M per level in the set (so 4 levels = 12-20M).
 * **Envs**: Use at least 4x the number of levels (e.g. 16 envs for 4 levels). Levels cycle evenly across envs.
 * **Entropy**: Consider `--ent_coef 0.02` (pass via extra args) for more exploration across diverse levels.
+* **Evaluation**: `best_model.zip` is selected on the mean evaluation reward across all levels in the set, and `evaluate` reports clear rate per level.
 
 ### Fine-Tuning from Checkpoint
 
@@ -141,7 +142,7 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 | :--- | :--- | :--- | :--- |
 | `validate` | Confirms the environment initializes and can step without crashing. | No | Pass/fail output. |
 | `train` | Runs PPO training on one or more levels. | No (optional `--load_model` to resume) | Model weights, checkpoints, TensorBoard logs. |
-| `evaluate` | Loads a trained model, records one gameplay episode with metadata overlay, then runs `--eval_episodes` episodes for a clear-rate summary. | Yes (`--model_path`) | `.mp4` + `.gif` video, `evaluation_summary.json`. |
+| `evaluate` | For every level of the run: records one gameplay episode with metadata overlay, then runs `--eval_episodes` episodes for a per-level clear-rate table. | Yes (`--model_path` or `--run_dir`) | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
 | `visualize` | Renders up to 4 checkpoints in a side-by-side grid video. | Yes (`--checkpoint_dir`) | `.mp4` montage video. |
 | `plot` | Plots training episode reward and evaluation reward from TensorBoard logs. | No | `.png` plot file. |
 | `dashboard` | Launches TensorBoard in the browser. | No | Web UI. |
@@ -263,9 +264,9 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `tensorboard/`: TensorBoard event logs.
     * `checkpoints/`: Periodic model snapshots.
     * `eval_logs/`: Evaluation results from `EvalCallback`.
-    * `best_model.zip`: Best-performing model weights (selected by periodic evaluation on unshaped game reward with random no-op starts, protects against catastrophic forgetting).
+    * `best_model.zip`: Best-performing model weights (selected by periodic evaluation on unshaped game reward with random no-op starts across every level of the run, protects against catastrophic forgetting).
     * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
-    * `evaluation_run.mp4` / `evaluation_run.gif`: Gameplay video with overlay (the GIF embeds in GitHub READMEs).
-    * `evaluation_summary.json`: Clear rate, mean reward, and max distance across `--eval_episodes` episodes.
+    * `evaluation_run.mp4` / `evaluation_run.gif`: Gameplay video with overlay (the GIF embeds in GitHub READMEs). Multi-level runs write one pair per level, e.g. `evaluation_run_1-2.mp4`.
+    * `evaluation_summary.json`: Per-level clear rate, mean reward, and max distance across `--eval_episodes` episodes.
     * `progress_montage.mp4`: Side-by-side checkpoint comparison.
     * `reward_curve.png`: Training and evaluation reward curves.

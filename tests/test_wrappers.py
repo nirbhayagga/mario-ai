@@ -168,6 +168,19 @@ class TestEnvironmentStack:
         finally:
             env.close()
 
+    def test_multi_level_in_process_stack_has_one_env_per_level(self):
+        from stable_baselines3.common.vec_env import DummyVecEnv
+
+        env = env_setup.create_mario_environment(
+            ["SuperMarioBros-1-1-v0", "SuperMarioBros-1-2-v0"], n_envs=1, subproc=False,
+        )
+        try:
+            assert env.num_envs == 2
+            assert isinstance(env.venv.venv, DummyVecEnv)  # VecFrameStack -> VecMonitor -> DummyVecEnv
+            assert env.reset().shape == (2, 84, 84, 4)
+        finally:
+            env.close()
+
     def test_stuck_episode_terminates_and_reports_monitor_stats(self):
         """NOOP forever: Mario never moves, so CustomRewardWrapper ends the
         episode after 600 stuck NES frames (~150 agent steps at skip=4), and

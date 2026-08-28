@@ -139,7 +139,8 @@ class SkipFrame(gym.Wrapper):
 
 
 def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
-                             use_custom_reward=False, use_noop=False, action_space="simple"):
+                             use_custom_reward=False, use_noop=False, action_space="simple",
+                             subproc=True):
     """
     Builds the full environment stack:
       [NoopReset] -> JoypadSpace -> [CustomReward] -> SkipFrame -> [RewardClip]
@@ -154,6 +155,10 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
 
     CustomReward is placed BEFORE SkipFrame so it sees individual frames.
     RewardClip is placed AFTER SkipFrame so the accumulated reward is clipped.
+
+    Multi-env stacks use SubprocVecEnv (one worker process per env) unless
+    subproc=False, which keeps every env in-process; evaluation uses that so
+    it does not spawn workers that sit idle between evaluations.
     """
 
     def make_env(target_id):
@@ -178,13 +183,14 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
             return env
         return _init
 
+    vec_env_cls = SubprocVecEnv if subproc else DummyVecEnv
     if isinstance(env_id, list):
         # Cycle levels across n_envs so each level gets balanced coverage
         actual_n = max(n_envs, len(env_id))
         print(f"Creating multi-level environment: {env_id} ({actual_n} envs)")
-        env = SubprocVecEnv([make_env(env_id[i % len(env_id)]) for i in range(actual_n)])
+        env = vec_env_cls([make_env(env_id[i % len(env_id)]) for i in range(actual_n)])
     elif n_envs > 1:
-        env = SubprocVecEnv([make_env(env_id) for _ in range(n_envs)])
+        env = vec_env_cls([make_env(env_id) for _ in range(n_envs)])
     else:
         env = DummyVecEnv([make_env(env_id)])
 

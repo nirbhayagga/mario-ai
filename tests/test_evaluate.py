@@ -81,3 +81,32 @@ def test_summarize_episodes():
         "best_max_x": 3200,
         "mean_steps": 400.0,
     }
+
+
+def test_level_tag_extracts_world_and_stage():
+    assert evaluate.level_tag("SuperMarioBros-1-2-v0") == "1-2"
+    assert evaluate.level_tag("SuperMarioBros-8-4-v3") == "8-4"
+    assert evaluate.level_tag("SuperMarioBros-v0") == "SuperMarioBros-v0"
+
+
+def test_output_paths_single_level_keeps_plain_names():
+    assert evaluate.output_paths("runs/x/evaluation_run.mp4", "SuperMarioBros-1-1-v0", multi_level=False) == (
+        "runs/x/evaluation_run.mp4", "runs/x/evaluation_run.gif",
+    )
+
+
+def test_output_paths_multi_level_adds_level_suffix():
+    assert evaluate.output_paths("runs/x/evaluation_run.mp4", "SuperMarioBros-1-2-v0", multi_level=True) == (
+        "runs/x/evaluation_run_1-2.mp4", "runs/x/evaluation_run_1-2.gif",
+    )
+
+
+def test_format_summary_table_one_row_per_level():
+    table = evaluate.format_summary_table({
+        "SuperMarioBros-1-1-v0": {"clear_rate": 0.9, "mean_reward": 2950.4, "mean_max_x": 3100.2, "best_max_x": 3161},
+        "SuperMarioBros-1-2-v0": {"clear_rate": 0.0, "mean_reward": 800.0, "mean_max_x": 900.0, "best_max_x": 1200},
+    })
+    lines = table.splitlines()
+    assert len(lines) == 3
+    assert lines[1].startswith("1-1") and "90%" in lines[1] and lines[1].endswith("3161")
+    assert lines[2].startswith("1-2") and "0%" in lines[2]
