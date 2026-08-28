@@ -193,7 +193,7 @@ Launch TensorBoard:
 python run_pipeline.py --mode dashboard --level 1-1
 ```
 
-Play Mario manually (arrow keys, Space/Up to jump, Shift to sprint, Escape to quit):
+Play Mario manually (arrow keys to move, Down to crouch/enter pipe, Space/Up to jump, Shift to sprint, Z to climb, Escape to quit):
 ```bash
 python run_pipeline.py --mode manual
 ```

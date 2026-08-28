@@ -19,7 +19,7 @@ def launch_manual_gameplay():
     args = parser.parse_args()
 
     print(f"Starting manual play: {args.env_id}")
-    print("Controls: Arrow keys to move, Space/Up to jump, Shift to sprint.")
+    print("Controls: Arrow keys to move, Down to crouch/enter pipe, Space/Up to jump, Shift to sprint, Z to climb.")
     print("Close the window or press Escape to quit.")
 
     env = gym_super_mario_bros.make(args.env_id)
@@ -66,9 +66,8 @@ def launch_manual_gameplay():
         left = keys[pygame.K_LEFT]
         jump = keys[pygame.K_SPACE] or keys[pygame.K_UP]
         sprint = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
-        down = keys[pygame.K_a]
+        down = keys[pygame.K_DOWN]
         up = keys[pygame.K_z]
-
 
         if right and jump and sprint:
             action = 4  # Right + Jump + Sprint
