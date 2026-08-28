@@ -20,7 +20,20 @@ from stable_baselines3.common.utils import set_random_seed
 from env_setup import create_mario_environment
 from media import GifRecorder
 
-GIF_FRAME_STRIDE = 2  # every 2nd frame at 30 fps -> 15 fps GIF, ~half the size
+# One frame is rendered per agent step, and each step is 4 NES frames at 60 Hz,
+# so writing 15 frames per second plays the game back in real time.
+REAL_TIME_FPS = 15.0
+GIF_TARGET_FPS = 15.0
+
+
+def video_fps(speed):
+    """Frames per second that play the recording back at `speed` x real time."""
+    return REAL_TIME_FPS * speed
+
+
+def gif_stride(speed):
+    """Keeps the GIF near GIF_TARGET_FPS by dropping frames as playback speed rises."""
+    return max(1, int(round(video_fps(speed) / GIF_TARGET_FPS)))
 
 
 def parse_evaluation_arguments():
@@ -35,6 +48,8 @@ def parse_evaluation_arguments():
                         help="The Gym environment ID.")
     parser.add_argument("--max_steps", type=int, default=3000,
                         help="Maximum steps per episode (stops earlier on level clear or death).")
+    parser.add_argument("--video_speed", type=float, default=2.0,
+                        help="Playback speed of the recording relative to real time (1.0 = real time).")
     parser.add_argument("--episodes", type=int, default=1,
                         help="Episodes to run for clear-rate statistics. The first is recorded; "
                              "the rest use random no-op starts and are not rendered.")
@@ -122,8 +137,9 @@ def evaluate_level(model, env_id, args, movement, video_path, gif_path):
     vec_env = create_mario_environment(env_id=env_id, action_space=args.action_space)
     inner_env = vec_env.venv.envs[0]
 
-    video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), 30.0, (256, 240))
-    gif = GifRecorder(gif_path, fps=30.0, every=GIF_FRAME_STRIDE)
+    fps = video_fps(args.video_speed)
+    video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (256, 240))
+    gif = GifRecorder(gif_path, fps=fps, every=gif_stride(args.video_speed))
 
     def record(info, action_int, total_reward):
         bgr_frame = cv2.cvtColor(inner_env.render(mode="rgb_array"), cv2.COLOR_RGB2BGR)
@@ -132,7 +148,8 @@ def evaluate_level(model, env_id, args, movement, video_path, gif_path):
         video_writer.write(bgr_frame)
         gif.add(cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB))
 
-    print(f"\n[{env_id}] Recording episode 1 to {video_path} (max {args.max_steps} steps)")
+    print(f"\n[{env_id}] Recording episode 1 to {video_path} "
+          f"(max {args.max_steps} steps, {args.video_speed:g}x speed, {fps:g} fps)")
     results = [run_episode(vec_env, model, args.max_steps, on_step=record)]
     video_writer.release()
     gif.save()

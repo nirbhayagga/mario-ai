@@ -63,6 +63,7 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | `--n_epochs` | `10` | Number of PPO optimization epochs per rollout. |
 | `--max_steps` | `3000` | Maximum evaluation steps per episode (stops earlier on level clear). |
 | `--eval_episodes` | `10` | Episodes run in `evaluate` mode for the clear-rate summary. The first is recorded; the rest use random no-op starts. |
+| `--video_speed` | `2.0` | Playback speed of evaluation recordings relative to real time. `1.0` writes real-time video at 15 fps; the GIF drops frames to stay near 15 fps at any speed. |
 
 ### PPO Hyperparameters
 

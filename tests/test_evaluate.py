@@ -110,3 +110,16 @@ def test_format_summary_table_one_row_per_level():
     assert len(lines) == 3
     assert lines[1].startswith("1-1") and "90%" in lines[1] and lines[1].endswith("3161")
     assert lines[2].startswith("1-2") and "0%" in lines[2]
+
+
+def test_video_fps_scales_from_real_time():
+    assert evaluate.video_fps(1.0) == 15.0
+    assert evaluate.video_fps(2.0) == 30.0
+    assert evaluate.video_fps(0.5) == 7.5
+
+
+def test_gif_stride_keeps_gif_near_15_fps():
+    assert evaluate.gif_stride(1.0) == 1
+    assert evaluate.gif_stride(2.0) == 2
+    assert evaluate.gif_stride(4.0) == 4
+    assert evaluate.gif_stride(0.5) == 1

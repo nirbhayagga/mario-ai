@@ -118,6 +118,13 @@ def test_evaluate_forwards_episode_count(run):
     assert cmd[cmd.index("--episodes") + 1] == "25"
 
 
+def test_evaluate_forwards_video_speed(run):
+    (cmd,) = run("--mode", "evaluate", "--model_path", "m.zip")
+    assert cmd[cmd.index("--video_speed") + 1] == "2.0"
+    (cmd,) = run("--mode", "evaluate", "--model_path", "m.zip", "--video_speed", "1")
+    assert cmd[cmd.index("--video_speed") + 1] == "1.0"
+
+
 def test_evaluate_explicit_model_path_wins(run):
     (cmd,) = run("--mode", "evaluate", "--model_path", "custom.zip")
     assert cmd[cmd.index("--model_path") + 1] == "custom.zip"

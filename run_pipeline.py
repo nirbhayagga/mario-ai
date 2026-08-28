@@ -85,6 +85,7 @@ def build_evaluate_command(python_cmd, args, env_id, model_path, video_output, e
         "--env_id", env_id,
         "--max_steps", str(args.max_steps),
         "--episodes", str(args.eval_episodes),
+        "--video_speed", str(args.video_speed),
         "--action_space", args.action_space,
     ]
     if args.seed is not None:
@@ -163,6 +164,8 @@ def main():
                         help="Number of PPO optimization epochs per rollout.")
     parser.add_argument("--max_steps", type=int, default=3000,
                         help="Maximum evaluation steps per episode (stops earlier on level clear).")
+    parser.add_argument("--video_speed", type=float, default=2.0,
+                        help="Playback speed of evaluation recordings relative to real time (1.0 = real time).")
     parser.add_argument("--eval_episodes", type=int, default=10,
                         help="Episodes to run in evaluate mode for clear-rate statistics. "
                              "The first is recorded to video; the rest use random no-op starts.")
