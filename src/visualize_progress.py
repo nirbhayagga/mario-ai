@@ -7,21 +7,44 @@ import argparse
 import cv2
 import os
 import glob
+import re
 import numpy as np
 from stable_baselines3 import PPO
 from env_setup import create_mario_environment
+
+
+def checkpoint_step(path):
+    """Extracts the step count from a CheckpointCallback filename
+    (e.g. mario_ppo_agent_250000_steps.zip -> 250000). Unparseable names sort first."""
+    match = re.search(r"_(\d+)_steps", os.path.basename(path))
+    return int(match.group(1)) if match else -1
+
+
+def select_checkpoints(model_files, max_models=4):
+    """Returns up to max_models checkpoints evenly spaced across training,
+    always including the earliest and latest, sorted by step count.
+
+    A plain lexicographic sort puts 1000000 before 200000 and slicing the
+    first four then shows early checkpoints only, not training progress.
+    """
+    ordered = sorted(model_files, key=checkpoint_step)
+    if len(ordered) <= max_models:
+        return ordered
+    last = len(ordered) - 1
+    indices = [round(i * last / (max_models - 1)) for i in range(max_models)]
+    return [ordered[i] for i in indices]
 
 
 def create_montage_video(checkpoint_dir, output_path,
                          env_id="SuperMarioBros-v0", num_steps=1000, device="cpu"):
     """Loads up to 4 checkpoint models and renders them in a grid layout."""
 
-    model_files = sorted(glob.glob(os.path.join(checkpoint_dir, "*.zip")))
+    model_files = glob.glob(os.path.join(checkpoint_dir, "*.zip"))
     if not model_files:
         print(f"No models found in {checkpoint_dir}")
         return
 
-    models_to_compare = model_files[:4]
+    models_to_compare = select_checkpoints(model_files, max_models=4)
     num_models = len(models_to_compare)
 
     envs = []
