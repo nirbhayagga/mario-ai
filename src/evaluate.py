@@ -15,7 +15,7 @@ def parse_evaluation_arguments():
     parser = argparse.ArgumentParser(description="PPO Mario Evaluation")
     parser.add_argument("--model_path", type=str, default="mario_ppo_final.zip",
                         help="Path to the serialized model weights.")
-    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"],
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
                         help="Hardware device for inference.")
     parser.add_argument("--video_output", type=str, default="evaluation_run.mp4",
                         help="Output path for the evaluation video.")

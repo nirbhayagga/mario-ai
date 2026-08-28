@@ -36,7 +36,7 @@ def select_checkpoints(model_files, max_models=4):
 
 
 def create_montage_video(checkpoint_dir, output_path,
-                         env_id="SuperMarioBros-v0", num_steps=1000, device="cpu"):
+                         env_id="SuperMarioBros-v0", num_steps=1000, device="auto"):
     """Loads up to 4 checkpoint models and renders them in a grid layout."""
 
     model_files = glob.glob(os.path.join(checkpoint_dir, "*.zip"))
@@ -74,7 +74,7 @@ def create_montage_video(checkpoint_dir, output_path,
 
     print(f"Generating montage: {output_path} ({num_steps} steps)...")
 
-    for i in range(num_steps):
+    for _ in range(num_steps):
         frames = []
         for j in range(num_models):
             action, _ = models[j].predict(observations[j], deterministic=True)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                         help="Path to the output montage video.")
     parser.add_argument("--num_steps", type=int, default=1000,
                         help="Number of steps to render per model.")
-    parser.add_argument("--device", type=str, default="cpu",
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
                         help="Device for model inference.")
     parser.add_argument("--env_id", type=str, default="SuperMarioBros-v0",
                         help="The Gym environment ID.")

@@ -8,13 +8,14 @@ import argparse
 import os
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
+from stable_baselines3.common.utils import get_device
 from env_setup import create_mario_environment
 
 
 def parse_training_arguments():
     parser = argparse.ArgumentParser(description="PPO Mario Training")
-    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"],
-                        help="Hardware device for training.")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
+                        help="Hardware device for training (auto picks CUDA when available).")
     parser.add_argument("--total_timesteps", type=int, default=1000000,
                         help="Total environment steps to train for.")
     parser.add_argument("--learning_rate", type=float, default=2.5e-4,
@@ -70,7 +71,7 @@ def execute_training():
     else:
         target_envs = args.env_id
 
-    print(f"Training on device: {args.device}")
+    print(f"Training on device: {get_device(args.device)}")
     print(f"Environment: {target_envs}")
     use_custom_reward = not args.no_custom_reward
     use_lr_schedule = not args.no_lr_schedule
@@ -95,9 +96,10 @@ def execute_training():
     else:
         total_env_steps = args.total_timesteps // max(args.n_envs, 1)
         save_freq = max(10000, total_env_steps // 15)
-        
+
     actual_timesteps_per_save = save_freq * max(args.n_envs, 1)
-    print(f"Checkpoint frequency: every {save_freq} env steps ({actual_timesteps_per_save} total timesteps) -> ~15 checkpoints")
+    print(f"Checkpoint frequency: every {save_freq} env steps "
+          f"({actual_timesteps_per_save} total timesteps) -> ~15 checkpoints")
 
     checkpoint_callback = CheckpointCallback(
         save_freq=save_freq,
@@ -107,12 +109,15 @@ def execute_training():
 
     # Eval callback: periodically evaluate and save the best model.
     # This protects against catastrophic forgetting where the final model
-    # may be far worse than intermediate ones.
+    # may be far worse than intermediate ones. Evaluation uses the raw game
+    # reward (no shaping) but keeps random no-op starts: with a deterministic
+    # policy on a deterministic env, the n_eval_episodes would otherwise be
+    # identical replays of a single trajectory.
     eval_env = create_mario_environment(
         env_id=target_envs if isinstance(target_envs, str) else target_envs[0],
         n_envs=1,
         use_custom_reward=False,
-        use_noop=False,
+        use_noop=True,
         action_space=args.action_space,
     )
     eval_callback = EvalCallback(

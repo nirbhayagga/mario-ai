@@ -38,11 +38,11 @@ All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e
 | :--- | :--- | :--- |
 | `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `manual`, `all` |
 | `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
-| `--device` | `cuda` | `cuda` or `cpu`. |
+| `--device` | `auto` | `auto` (CUDA if available, else CPU), `cuda`, or `cpu`. |
 | `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
 | `--total_timesteps` | `2000000` | Total training steps. |
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
-| `--no_custom_reward` | off | Disables stuck penalty, early termination, and reward clipping. Custom rewards are ON by default. |
+| `--no_custom_reward` | off | Disables stuck penalty, early termination, reward clipping, and random no-op starts. Custom rewards are ON by default. |
 | `--no_lr_schedule` | off | Disables linear learning rate decay. LR schedule is ON by default. |
 | `--load_model` | none | Path to a `.zip` model to resume from. All CLI hyperparameters (LR, clip_range, etc.) are applied on resume. |
 | `--model_path` | none | Model for evaluation. |
@@ -243,11 +243,11 @@ The 32 levels fall into four categories requiring different AI strategies:
 ## Directory Organization
 
 * `src/`: Python source modules.
-* `runs/`: Each experiment generates an isolated folder using the pattern `<level>_<timesteps>steps[_rew][_lr][_resume]`:
+* `runs/`: Each experiment generates an isolated folder using the pattern `<level>_<timesteps>steps[_rew][_lr][_resume][_<action_space>]`:
     * `tensorboard/`: TensorBoard event logs.
     * `checkpoints/`: Periodic model snapshots.
     * `eval_logs/`: Evaluation results from `EvalCallback`.
-    * `best_model.zip`: Best-performing model weights (selected by periodic evaluation, protects against catastrophic forgetting).
+    * `best_model.zip`: Best-performing model weights (selected by periodic evaluation on unshaped game reward with random no-op starts, protects against catastrophic forgetting).
     * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
     * `evaluation_run.mp4`: Gameplay video with overlay.
     * `progress_montage.mp4`: Side-by-side checkpoint comparison.

@@ -114,8 +114,8 @@ def main():
                         help="Mario level (e.g. 1-1, 1-2, 2-1). Comma-separated for multi-level.")
     parser.add_argument("--total_timesteps", type=int, default=2000000,
                         help="Total timesteps for training.")
-    parser.add_argument("--device", type=str, default="cuda", choices=["cuda", "cpu"],
-                        help="Hardware device for training and inference.")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"],
+                        help="Hardware device for training and inference (auto picks CUDA when available).")
     parser.add_argument("--n_envs", type=int, default=4,
                         help="Number of parallel environments.")
     parser.add_argument("--no_custom_reward", action="store_true",
@@ -145,7 +145,7 @@ def main():
 
     # Resolve environment IDs
     if "," in args.level:
-        levels = [map_level(l) for l in args.level.split(",")]
+        levels = [map_level(lvl) for lvl in args.level.split(",")]
         env_id = ",".join(levels)
     else:
         env_id = map_level(args.level)
