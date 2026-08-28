@@ -10,7 +10,7 @@ import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, COMPLEX_MOVEMENT, RIGHT_ONLY
 from nes_py.wrappers import JoypadSpace
 from gym.wrappers import GrayScaleObservation, ResizeObservation
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, VecMonitor
 
 
 class CustomRewardWrapper(gym.Wrapper):
@@ -132,7 +132,11 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
     """
     Builds the full environment stack:
       [NoopReset] -> JoypadSpace -> [CustomReward] -> SkipFrame -> [RewardClip]
-      -> GrayScale -> Resize -> VecFrameStack(4)
+      -> GrayScale -> Resize -> VecEnv -> VecMonitor -> VecFrameStack(4)
+
+    VecMonitor is required for SB3 to log rollout/ep_rew_mean and
+    rollout/ep_len_mean: SB3 only auto-wraps plain gym envs in Monitor, not
+    VecEnvs, so without it the reward curve never gets written.
 
     Stage-specific env IDs (SuperMarioBros-<w>-<s>-v<n>) already return done on
     death and on flag capture, so no episodic-life wrapper is needed.
@@ -173,5 +177,6 @@ def create_mario_environment(env_id="SuperMarioBros-v0", n_envs=1,
     else:
         env = DummyVecEnv([make_env(env_id)])
 
+    env = VecMonitor(env)
     env = VecFrameStack(env, n_stack=4, channels_order='last')
     return env

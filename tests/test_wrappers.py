@@ -153,3 +153,22 @@ class TestEnvironmentStack:
             assert "x_pos" in info[0]
         finally:
             env.close()
+
+    def test_stuck_episode_terminates_and_reports_monitor_stats(self):
+        """NOOP forever: Mario never moves, so CustomRewardWrapper ends the
+        episode after 600 stuck NES frames (~150 agent steps at skip=4), and
+        VecMonitor attaches the episode return/length SB3 needs for logging."""
+        env = env_setup.create_mario_environment("SuperMarioBros-1-1-v0", n_envs=1, use_custom_reward=True)
+        try:
+            env.reset()
+            step = 0
+            done = [False]
+            while not done[0] and step < 400:
+                step += 1
+                _, _, done, info = env.step([0])
+            assert done[0], "stuck episode never terminated"
+            assert 140 <= step <= 160, step
+            assert {"r", "l"} <= set(info[0]["episode"])
+            assert info[0]["episode"]["l"] == step
+        finally:
+            env.close()
