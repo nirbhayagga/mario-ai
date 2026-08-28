@@ -41,47 +41,85 @@ The same lint and test steps run in CI (`.github/workflows/ci.yml`) on every pus
 
 ## Usage
 
-All tasks are run through `run_pipeline.py`. Specify the level with `--level` (e.g. `1-1`, `2-1`).
+Everything runs through `run_pipeline.py <command>`:
 
-### Command Line Arguments
+| Command | What it does | Needs | Produces |
+| :--- | :--- | :--- | :--- |
+| `validate` | Builds the exact environment stack training will use and steps it once. | Nothing | Pass/fail. |
+| `train` | PPO training on one or more levels. | Nothing (optional `--load_model` to resume) | `run_config.json`, checkpoints, `best_model.zip`, `mario_ppo_final.zip`, TensorBoard logs. |
+| `evaluate` | For every level of the run: records one episode with a metadata overlay, then runs `--eval_episodes` episodes for a per-level clear-rate table. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
+| `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) side by side. | A trained run | `progress_montage.mp4` and a half-resolution `.gif`. |
+| `plot` | Plots clear rate, max distance, training reward, and evaluation reward from TensorBoard logs. | A trained run | `reward_curve.png`. |
+| `dashboard` | Launches TensorBoard on a run. | A trained run | Web UI. |
+| `manual` | Human-controlled gameplay via keyboard. Resets on death; Escape quits. | Nothing | Nothing. |
+| `all` | `validate`, `train`, `evaluate`, `visualize`, and `plot` in sequence. | Nothing | All of the above. |
 
-| Argument | Default | Description |
+`python run_pipeline.py <command> --help` lists that command's options. Unknown options are rejected. Commands that operate on a trained run take `--run_dir`; when it is omitted they use the most recently trained run under `runs/`, and they read the level and action space from the run's `run_config.json`.
+
+### Environment options
+
+Accepted by `validate`, `train`, `evaluate`, `visualize`, `manual`, and `all`.
+
+| Option | Default | Description |
 | :--- | :--- | :--- |
-| `--mode` | `all` | `validate`, `train`, `evaluate`, `visualize`, `plot`, `dashboard`, `manual`, `all` |
-| `--level` | `1-1` | Target level. Supports comma-separated lists (e.g. `1-1,1-2,2-1`). |
-| `--run_dir` | none | Existing run directory. Replaces the derived `runs/<...>` path and fills `--level`/`--action_space` from its `run_config.json`, so `evaluate`, `visualize`, `plot`, and `dashboard` do not need the original training flags. |
-| `--seed` | none | Seeds PPO, numpy/torch, and every environment (including random no-op starts). Omit for an unseeded run. |
-| `--device` | `auto` | `auto` (CUDA if available, else CPU), `cuda`, or `cpu`. |
-| `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). |
+| `--level` | `1-1` | Target level, e.g. `1-1` or `1-1-v3`. Comma-separated for multi-level (`1-1,1-2,2-1`). Commands on a trained run default to the run's level. |
+| `--action_space` | `simple` | Movement space: `simple` (7 actions), `right_only` (5 actions - recommended for speed), or `complex` (12 actions). Commands on a trained run default to the run's action space. |
+| `--no_custom_reward` | off | Disables stuck penalty, early termination, reward clipping, and random no-op starts (`validate`, `train`, `all`). |
+
+### Training options
+
+Accepted by `train` and `all`.
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `--run_dir` | derived | Directory to write the run to. Defaults to `runs/<level>_<timesteps>steps[_rew][_lr][_resume][_<action_space>]`. |
 | `--total_timesteps` | `2000000` | Total training steps. |
 | `--n_envs` | `4` | Parallel environments. For multi-level, levels cycle across envs. |
-| `--no_custom_reward` | off | Disables stuck penalty, early termination, reward clipping, and random no-op starts. Custom rewards are ON by default. |
-| `--no_lr_schedule` | off | Disables linear learning rate decay. LR schedule is ON by default. |
-| `--load_model` | none | Path to a `.zip` model to resume from. All CLI hyperparameters (LR, clip_range, etc.) are applied on resume. |
-| `--model_path` | none | Model for evaluation. |
-| `--checkpoint_dir` | none | Directory containing checkpoints for montage visualization. |
-| `--video_output` | none | Destination path for exported `.mp4` video files. |
-| `--save_freq` | auto | Checkpoint save frequency. Auto-computed for ~15 checkpoints if not set. |
-| `--n_epochs` | `10` | Number of PPO optimization epochs per rollout. |
-| `--max_steps` | `3000` | Maximum evaluation steps per episode (stops earlier on level clear). |
-| `--eval_episodes` | `10` | Episodes run in `evaluate` mode for the clear-rate summary. The first is recorded; the rest use random no-op starts. |
-| `--video_speed` | `2.0` | Playback speed of evaluation recordings relative to real time. `1.0` writes real-time video at 15 fps; the GIF drops frames to stay near 15 fps at any speed. |
+| `--no_lr_schedule` | off | Disables linear learning rate decay. |
+| `--load_model` | none | Path to a `.zip` model to resume from. Every hyperparameter given on the command line applies on resume. |
+| `--save_freq` | auto | Checkpoint save frequency in env steps. Auto-computed for ~15 checkpoints if not set. |
+| `--device` | `auto` | `auto` (CUDA if available, else CPU), `cuda`, or `cpu`. Also accepted by `evaluate` and `visualize`. |
+| `--seed` | none | Seeds PPO, numpy/torch, and every environment (including random no-op starts). Also accepted by `evaluate`. Two seeded CPU runs are bit-identical. |
 
 ### PPO Hyperparameters
 
-These defaults are based on community benchmarks from GitHub and Reddit for Super Mario Bros:
+Accepted by `train` and `all`; the defaults live in `src/train.py` and are based on community benchmarks for Super Mario Bros:
 
-| Parameter | Default | Rationale |
+| Option | Default | Rationale |
 | :--- | :--- | :--- |
 | `--n_steps` | `512` | Shorter rollouts converge faster for Mario. Longer buffers (2048) dilute the learning signal. |
 | `--gamma` | `0.99` | High discount factor prioritizes reaching the flagpole over grabbing local coins. |
 | `--batch_size` | `256` | Larger batches stabilize gradients with the clipped reward range. |
 | `--ent_coef` | `0.01` | Entropy bonus encourages exploration and prevents the agent from getting stuck in loops. |
 | `--vf_coef` | `0.5` | Balanced actor-critic weighting, standard for PPO. |
-| `max_grad_norm` | `0.5` | Gradient clipping prevents catastrophic policy updates during long runs. |
 | `--clip_range` | `0.1` | Tighter clipping than the SB3 default (0.2) prevents catastrophic policy swings. |
 | `--n_epochs` | `10` | Sufficient optimization passes per batch without overfitting to the rollout. |
 | `--learning_rate` | `2.5e-4` | SB3 default. Paired with linear decay (disable with `--no_lr_schedule`). |
+| `max_grad_norm` | `0.5` | Fixed. Gradient clipping prevents catastrophic policy updates during long runs. |
+
+### Evaluation options
+
+Accepted by `evaluate` and `all`.
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `--run_dir` | latest run | Run to evaluate (`evaluate` only; `visualize`, `plot`, and `dashboard` take it too). |
+| `--model_path` | `best_model.zip` | Model to evaluate; falls back to `mario_ppo_final.zip` (`evaluate` only). |
+| `--video_output` | `<run_dir>/evaluation_run.mp4` | Output video path; a `.gif` is written alongside (`evaluate` and `visualize`). |
+| `--max_steps` | `3000` | Maximum steps per episode (stops earlier on level clear or death). |
+| `--eval_episodes` | `10` | Episodes per level for the clear-rate summary. The first is recorded; the rest use random no-op starts. |
+| `--video_speed` | `2.0` | Playback speed relative to real time. `1.0` writes real-time video at 15 fps; the GIF drops frames to stay near 15 fps at any speed. |
+
+### Montage options
+
+Accepted by `visualize` and `all`.
+
+| Option | Default | Description |
+| :--- | :--- | :--- |
+| `--checkpoint_dir` | `<run_dir>/checkpoints` | Directory containing checkpoints (`visualize` only). |
+| `--num_steps` | `1000` | Steps rendered per checkpoint. |
+
+`dashboard` additionally accepts `--port` (default `6006`).
 
 ---
 
@@ -90,8 +128,7 @@ These defaults are based on community benchmarks from GitHub and Reddit for Supe
 ### Single-Level Training (e.g. mastering 1-1)
 
 ```bash
-python run_pipeline.py --mode train --level 1-1 \
-    --total_timesteps 5000000 --n_envs 8
+python run_pipeline.py train --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 * **Timesteps**: 2-5M for World 1 levels, 5-10M for harder levels (castles, underwater).
@@ -103,22 +140,20 @@ python run_pipeline.py --mode train --level 1-1 \
 ### Multi-Level Training (e.g. World 1)
 
 ```bash
-python run_pipeline.py --mode train --level 1-1,1-2,1-3,1-4 \
-    --total_timesteps 15000000 --n_envs 16
+python run_pipeline.py train --level 1-1,1-2,1-3,1-4 --total_timesteps 15000000 --n_envs 16
 ```
 
 * **Timesteps**: ~3-5M per level in the set (so 4 levels = 12-20M).
 * **Envs**: Use at least 4x the number of levels (e.g. 16 envs for 4 levels). Levels cycle evenly across envs.
-* **Entropy**: Consider `--ent_coef 0.02` (pass via extra args) for more exploration across diverse levels.
+* **Entropy**: Consider `--ent_coef 0.02` for more exploration across diverse levels.
 * **Evaluation**: `best_model.zip` is selected on the mean evaluation reward across all levels in the set, and `evaluate` reports clear rate per level.
 
 ### Fine-Tuning from Checkpoint
 
 ```bash
-python run_pipeline.py --mode train --level 1-1 \
-    --load_model runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip \
-    --total_timesteps 2000000 --n_envs 8 \
-    --learning_rate 5e-5
+python run_pipeline.py train --level 1-1 \
+    --load_model runs/1-1_5000000steps_rew_lr/best_model.zip \
+    --total_timesteps 2000000 --n_envs 8 --learning_rate 5e-5
 ```
 
 * Use a lower learning rate (5e-5 or 2.5e-5) to refine without destroying learned behavior.
@@ -139,89 +174,55 @@ Each level has 4 visual variants (`-v0` through `-v3`). Append to the level (e.g
 
 ---
 
-## Pipeline Modes
+## Examples
 
-### Mode Reference
-
-| Mode | Description | Requires Model | Produces |
-| :--- | :--- | :--- | :--- |
-| `validate` | Confirms the environment initializes and can step without crashing. | No | Pass/fail output. |
-| `train` | Runs PPO training on one or more levels. | No (optional `--load_model` to resume) | Model weights, checkpoints, TensorBoard logs. |
-| `evaluate` | For every level of the run: records one gameplay episode with metadata overlay, then runs `--eval_episodes` episodes for a per-level clear-rate table. | Yes (`--model_path` or `--run_dir`) | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
-| `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) in a side-by-side grid video, plus a half-resolution GIF for READMEs. | Yes (`--checkpoint_dir` or `--run_dir`) | `.mp4` montage video and `.gif`. |
-| `plot` | Plots training episode reward and evaluation reward from TensorBoard logs. | No | `.png` plot file. |
-| `dashboard` | Launches TensorBoard in the browser. | No | Web UI. |
-| `manual` | Human-controlled gameplay via keyboard. Resets on death. Press Escape to quit. | No | None. |
-| `all` | Runs validate, train, evaluate, visualize, and plot in sequence (default). | No | All artifacts. |
-
-### Run Order (When Executing Modes Separately)
-
-If you choose to run modes individually instead of using `all`, follow this order:
-
-1. **validate** - Confirm your environment works before committing to a long training run.
-2. **train** - Run PPO training. This produces model weights and TensorBoard logs.
-3. **evaluate** - Generate a video of the trained agent playing. Requires the model from step 2.
-4. **visualize** - Compare checkpoint performance over time. Requires checkpoints from step 2.
-5. **plot** - Generate a reward curve image. Requires TensorBoard logs from step 2.
-6. **dashboard** - (Optional) Launch TensorBoard for live monitoring. Can run during step 2.
-
-The `manual` mode is standalone and can be run at any time.
-
-### Examples
+The natural order is `validate`, `train`, then `evaluate`, `visualize`, and `plot` on the resulting run; `dashboard` can run during training and `manual` at any time.
 
 Validate the environment:
 ```bash
-python run_pipeline.py --mode validate --level 1-1
+python run_pipeline.py validate --level 1-1
 ```
 
 Train on a single level:
 ```bash
-python run_pipeline.py --mode train --level 1-1 --total_timesteps 5000000 --n_envs 8
-```
-
-Resume from a checkpoint:
-```bash
-python run_pipeline.py --mode train --level 1-1 --load_model runs/1-1_5000000steps_rew_lr/mario_ppo_final.zip --total_timesteps 2000000
-```
-
-Train on multiple levels simultaneously:
-```bash
-python run_pipeline.py --mode train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
-```
-
-Generate a gameplay video with metadata overlay and a 10-episode clear-rate summary (level, action space, and model are read from the run directory):
-```bash
-python run_pipeline.py --mode evaluate --run_dir runs/1-1_5000000steps_rew_lr
-```
-
-Render a side-by-side checkpoint comparison montage:
-```bash
-python run_pipeline.py --mode visualize --run_dir runs/1-1_5000000steps_rew_lr
-```
-
-Plot the training curves:
-```bash
-python run_pipeline.py --mode plot --run_dir runs/1-1_5000000steps_rew_lr
-```
-
-Launch TensorBoard:
-```bash
-python run_pipeline.py --mode dashboard --run_dir runs/1-1_5000000steps_rew_lr
+python run_pipeline.py train --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 Train with a fixed seed so the run can be reproduced exactly on CPU:
 ```bash
-python run_pipeline.py --mode train --level 1-1 --seed 42
+python run_pipeline.py train --level 1-1 --seed 42
+```
+
+Train on multiple levels simultaneously:
+```bash
+python run_pipeline.py train --level 1-1,1-2,2-1,3-1 --total_timesteps 15000000 --n_envs 16
+```
+
+Evaluate the most recent run (gameplay video with overlay plus a 10-episode clear-rate table per level):
+```bash
+python run_pipeline.py evaluate
+```
+
+Evaluate a specific run at real-time playback speed:
+```bash
+python run_pipeline.py evaluate --run_dir runs/1-1_5000000steps_rew_lr --video_speed 1
+```
+
+Render a side-by-side checkpoint comparison montage, plot the training curves, and open TensorBoard:
+```bash
+python run_pipeline.py visualize --run_dir runs/1-1_5000000steps_rew_lr
+python run_pipeline.py plot --run_dir runs/1-1_5000000steps_rew_lr
+python run_pipeline.py dashboard --run_dir runs/1-1_5000000steps_rew_lr
 ```
 
 Play Mario manually (arrow keys to move, Down to crouch/enter pipe, Space/Up to jump, Shift to sprint, Z to climb, Escape to quit):
 ```bash
-python run_pipeline.py --mode manual
+python run_pipeline.py manual --level 1-1
 ```
 
-Run the full pipeline (default when `--mode` is omitted):
+Run the full pipeline end to end:
 ```bash
-python run_pipeline.py --level 1-1 --total_timesteps 5000000 --n_envs 8
+python run_pipeline.py all --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 ---
