@@ -1,5 +1,7 @@
 # Super Mario Bros PPO Agent
 
+[![CI](https://github.com/nirbhayagga/mario-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/nirbhayagga/mario-ai/actions/workflows/ci.yml)
+
 This repository trains a Reinforcement Learning agent to play Super Mario Bros using Proximal Policy Optimization (PPO) with Stable Baselines3.
 
 ## Setup
