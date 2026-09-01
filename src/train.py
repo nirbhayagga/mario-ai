@@ -18,6 +18,7 @@ from datetime import datetime
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback, CallbackList
 from stable_baselines3.common.utils import get_device, set_random_seed
+from stable_baselines3.common.vec_env import VecTransposeImage
 from callbacks import EpisodeStatsCallback
 from env_setup import create_mario_environment
 
@@ -168,6 +169,11 @@ def execute_training() -> None:
         action_space=args.action_space,
         subproc=False,
     )
+    # SB3 wraps the training env in VecTransposeImage internally (channels-last
+    # image obs -> channels-first for torch). Give the eval env the identical
+    # wrapper so both pipelines match; otherwise evaluation depends on predict()
+    # re-transposing every observation and EvalCallback warns about the mismatch.
+    eval_env = VecTransposeImage(eval_env)
     if args.seed is not None:
         env.seed(args.seed)
         eval_env.seed(args.seed + 10_000)
