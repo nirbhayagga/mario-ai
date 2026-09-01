@@ -123,3 +123,26 @@ def test_gif_stride_keeps_gif_near_15_fps():
     assert evaluate.gif_stride(2.0) == 2
     assert evaluate.gif_stride(4.0) == 4
     assert evaluate.gif_stride(0.5) == 1
+
+
+def test_best_episode_prefers_a_clear_over_a_farther_death():
+    results = [
+        {"cleared": False, "reward": 2600.0, "steps": 400, "max_x": 3000},
+        {"cleared": True, "reward": 2000.0, "steps": 500, "max_x": 2850},
+    ]
+    assert evaluate.best_episode_index(results) == 1
+
+
+def test_best_episode_prefers_furthest_death_when_none_clear():
+    results = [
+        {"cleared": False, "reward": 231.0, "steps": 40, "max_x": 296},
+        {"cleared": False, "reward": 2395.0, "steps": 2002, "max_x": 2850},
+        {"cleared": False, "reward": 2612.0, "steps": 414, "max_x": 2750},
+    ]
+    assert evaluate.best_episode_index(results) == 1
+
+
+def test_best_episode_breaks_clear_ties_on_reward():
+    fast = {"cleared": True, "reward": 3100.0, "steps": 420, "max_x": 3161}
+    slow = {"cleared": True, "reward": 2800.0, "steps": 700, "max_x": 3161}
+    assert evaluate.best_episode_index([slow, fast]) == 1

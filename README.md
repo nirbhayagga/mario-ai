@@ -47,7 +47,7 @@ Everything runs through `run_pipeline.py <command>`:
 | :--- | :--- | :--- | :--- |
 | `validate` | Builds the exact environment stack training will use and steps it once. | Nothing | Pass/fail. |
 | `train` | PPO training on one or more levels. | Nothing (optional `--load_model` to resume) | `run_config.json`, checkpoints, `best_model.zip`, `mario_ppo_final.zip`, TensorBoard logs. |
-| `evaluate` | For every level of the run: records one episode with a metadata overlay, then runs `--eval_episodes` episodes for a per-level clear-rate table. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
+| `evaluate` | For every level of the run: runs `--eval_episodes` episodes for a per-level clear-rate table, then replays the best one and records it with a metadata overlay. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
 | `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) side by side. | A trained run | `progress_montage.mp4` and a half-resolution `.gif`. |
 | `plot` | Plots clear rate, max distance, training reward, and evaluation reward from TensorBoard logs. | A trained run | `reward_curve.png`. |
 | `dashboard` | Launches TensorBoard on a run. | A trained run | Web UI. |
@@ -107,7 +107,7 @@ Accepted by `evaluate` and `all`.
 | `--model_path` | `best_model.zip` | Model to evaluate; falls back to `mario_ppo_final.zip` (`evaluate` only). |
 | `--video_output` | `<run_dir>/evaluation_run.mp4` | Output video path; a `.gif` is written alongside (`evaluate` and `visualize`). |
 | `--max_steps` | `3000` | Maximum steps per episode (stops earlier on level clear or death). |
-| `--eval_episodes` | `10` | Episodes per level for the clear-rate summary. The first is recorded; the rest use random no-op starts. |
+| `--eval_episodes` | `10` | Episodes per level for the clear-rate summary, each from a seeded random no-op start. The best episode (clears first, then furthest x) is replayed and recorded. |
 | `--video_speed` | `2.0` | Playback speed relative to real time. `1.0` writes real-time video at 15 fps; the GIF drops frames to stay near 15 fps at any speed. |
 
 ### Montage options
@@ -272,7 +272,7 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `eval_logs/`: Evaluation results from `EvalCallback`.
     * `best_model.zip`: Best-performing model weights (selected by periodic evaluation on unshaped game reward with random no-op starts across every level of the run, protects against catastrophic forgetting).
     * `mario_ppo_final.zip`: Final trained model weights (may be worse than best_model due to policy collapse).
-    * `evaluation_run.mp4` / `evaluation_run.gif`: Gameplay video with overlay (the GIF embeds in GitHub READMEs). Multi-level runs write one pair per level, e.g. `evaluation_run_1-2.mp4`.
+    * `evaluation_run.mp4` / `evaluation_run.gif`: The best evaluation episode, with overlay (the GIF embeds in GitHub READMEs). Multi-level runs write one pair per level, e.g. `evaluation_run_1-2.mp4`.
     * `evaluation_summary.json`: Per-level clear rate, mean reward, and max distance across `--eval_episodes` episodes.
     * `progress_montage.mp4` / `progress_montage.gif`: Side-by-side checkpoint comparison (the GIF is half resolution at 10 fps so it stays embeddable).
     * `reward_curve.png`: Training and evaluation reward curves.

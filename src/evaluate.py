@@ -1,10 +1,14 @@
 """
 Evaluation and Video Export Module
-Runs the trained policy on every level of the run. Per level, the first
-episode is recorded as .mp4 and .gif with a metadata overlay and the rest
-feed a clear-rate summary; the per-level table is printed and written to
-evaluation_summary.json. A single environment serves both inference and
-rendering so the overlay is always in sync with what the model saw.
+Runs the trained policy on every level of the run. Per level, --episodes
+episodes with seeded random no-op starts feed a clear-rate summary, then the
+best of them (clears first, then furthest x) is replayed with the same seed
+and recorded as .mp4 and .gif with a metadata overlay. Recording the best
+episode instead of an arbitrary one matters because a deterministic policy
+can have one degenerate trajectory (an early death) from a specific start
+while playing well from every other. A single environment serves both
+inference and rendering so the overlay is always in sync with what the
+model saw.
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ import numpy as np
 import argparse
 import json
 import os
+import random
 import re
 
 import cv2
@@ -63,7 +68,8 @@ def parse_evaluation_arguments() -> argparse.Namespace:
     parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
                         help="Action space to use (simple, complex, or right_only).")
     parser.add_argument("--seed", type=int, default=None,
-                        help="Seed for the random no-op starts of the extra episodes. Unseeded if omitted.")
+                        help="Base seed for the episode starts, making the whole evaluation reproducible. "
+                             "A random base seed is drawn (and reported) if omitted.")
     return parser.parse_args()
 
 
@@ -135,18 +141,43 @@ def output_paths(video_output: str, env_id: str, multi_level: bool) -> tuple[str
     return stem + (ext or ".mp4"), stem + ".gif"
 
 
+def best_episode_index(results: list[dict[str, Any]]) -> int:
+    """The episode worth recording: clears beat non-clears, then furthest x,
+    then reward (which, between two clears, rewards the faster one)."""
+    return max(range(len(results)),
+               key=lambda i: (results[i]["cleared"], results[i]["max_x"], results[i]["reward"]))
+
+
 def evaluate_level(model: PPO, env_id: str, args: argparse.Namespace, movement: list[list[str]],
-                   video_path: str, gif_path: str) -> list[dict[str, Any]]:
-    """Records episode 1 on a deterministic env, then samples the remaining
-    episodes with random no-op starts. Returns the list of episode outcomes."""
+                   video_path: str, gif_path: str) -> tuple[list[dict[str, Any]], int, int]:
+    """Runs the clear-rate episodes headless with per-episode seeds, then
+    replays the best one with its seed and records it. Returns
+    (episode outcomes, base seed, index of the recorded episode)."""
 
-    # n_envs=1 -> DummyVecEnv, whose .envs[0] exposes the wrapped gym env;
-    # render() passes through the observation wrappers to the base NES env
-    # for a clean 256x240 RGB frame.
-    vec_env = create_mario_environment(env_id=env_id, action_space=args.action_space)
-    inner_env = vec_env.venv.envs[0]
+    base_seed = args.seed if args.seed is not None else random.randrange(1_000_000)
+    print(f"\n[{env_id}] Running {args.episodes} episodes (base seed {base_seed})")
 
+    sample_env = create_mario_environment(env_id=env_id, action_space=args.action_space, use_noop=True)
+    results = []
+    for i in range(args.episodes):
+        sample_env.seed(base_seed + i)
+        results.append(run_episode(sample_env, model, args.max_steps))
+        print_episode(i + 1, results[-1])
+    sample_env.close()
+
+    best = best_episode_index(results)
     fps = video_fps(args.video_speed)
+    print(f"  Recording episode {best + 1} (best of {args.episodes}) to {video_path} "
+          f"({args.video_speed:g}x speed, {fps:g} fps)")
+
+    # Same seed + deterministic policy = the identical trajectory, this time
+    # recorded. n_envs=1 -> DummyVecEnv, whose .envs[0] exposes the wrapped gym
+    # env; render() passes through the observation wrappers to the base NES
+    # env for a clean 256x240 RGB frame.
+    record_env = create_mario_environment(env_id=env_id, action_space=args.action_space, use_noop=True)
+    record_env.seed(base_seed + best)
+    inner_env = record_env.venv.envs[0]
+
     video_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (256, 240))
     gif = GifRecorder(gif_path, fps=fps, every=gif_stride(args.video_speed))
 
@@ -157,24 +188,15 @@ def evaluate_level(model: PPO, env_id: str, args: argparse.Namespace, movement: 
         video_writer.write(bgr_frame)
         gif.add(cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB))
 
-    print(f"\n[{env_id}] Recording episode 1 to {video_path} "
-          f"(max {args.max_steps} steps, {args.video_speed:g}x speed, {fps:g} fps)")
-    results = [run_episode(vec_env, model, args.max_steps, on_step=record)]
+    recorded = run_episode(record_env, model, args.max_steps, on_step=record)
     video_writer.release()
     gif.save()
-    vec_env.close()
-    print_episode(1, results[0])
+    record_env.close()
+    if recorded != results[best]:
+        print(f"  Note: the recorded replay diverged from the sampled episode "
+              f"(max X {recorded['max_x']} vs {results[best]['max_x']}).")
 
-    if args.episodes > 1:
-        sample_env = create_mario_environment(env_id=env_id, action_space=args.action_space, use_noop=True)
-        if args.seed is not None:
-            sample_env.seed(args.seed)
-        for i in range(2, args.episodes + 1):
-            results.append(run_episode(sample_env, model, args.max_steps))
-            print_episode(i, results[-1])
-        sample_env.close()
-
-    return results
+    return results, base_seed, best
 
 
 def print_episode(index: int, result: dict[str, Any]) -> None:
@@ -210,9 +232,11 @@ def export_evaluation_video() -> None:
     per_level = {}
     for env_id in levels:
         video_path, gif_path = output_paths(args.video_output, env_id, multi_level=len(levels) > 1)
-        results = evaluate_level(model, env_id, args, movement, video_path, gif_path)
+        results, base_seed, best = evaluate_level(model, env_id, args, movement, video_path, gif_path)
         per_level[env_id] = {
             **summarize_episodes(results),
+            "base_seed": base_seed,
+            "recorded_episode": best + 1,
             "video": video_path,
             "gif": gif_path,
             "episodes_detail": results,
