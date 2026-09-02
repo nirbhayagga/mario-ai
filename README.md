@@ -4,6 +4,37 @@
 
 This repository trains a Reinforcement Learning agent to play Super Mario Bros using Proximal Policy Optimization (PPO) with Stable Baselines3.
 
+## Results
+
+Trained on World 1-1 for 10M timesteps total: 5M from scratch, then a 5M fine-tune from the best checkpoint at a lower learning rate with extra entropy (`--learning_rate 1e-4 --ent_coef 0.02`). The final agent clears the level in **10 out of 10** evaluation episodes, each started from a seeded random no-op offset and played with a deterministic policy.
+
+![Trained agent clearing World 1-1](assets/evaluation_run.gif)
+
+| Metric (10 episodes on 1-1, base seed 42) | Value |
+| :--- | :--- |
+| Clear rate | 100% (10/10) |
+| Mean game reward | 3029 |
+| Mean episode length | 462 agent steps (about 31 seconds of play) |
+| Furthest x reached | 3161 (the flag) in every episode |
+
+Training curves for the fine-tuning leg. The from-scratch leg plateaued at roughly 90% of the level with 0% clears, stuck at the staircase before the flag; the extra entropy broke through it, and the clear rate then climbs from 0% to about 100%:
+
+![Training curves](assets/reward_curve.png)
+
+Four checkpoints of the fine-tuning leg playing side by side:
+
+![Checkpoint montage](assets/progress_montage.gif)
+
+Reproduce (a few hours on a single consumer GPU):
+
+```bash
+python run_pipeline.py train --level 1-1 --seed 42 --n_envs 16 --total_timesteps 5000000
+python run_pipeline.py train --level 1-1 --seed 42 --n_envs 16 \
+    --load_model runs/1-1_5000000steps_rew_lr/best_model.zip \
+    --total_timesteps 5000000 --learning_rate 1e-4 --ent_coef 0.02
+python run_pipeline.py evaluate --seed 42
+```
+
 ## Setup
 
 Python 3.8 or 3.9 is required due to dependency constraints.
