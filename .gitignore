@@ -23,8 +23,6 @@ python_ver.log
 !requirements.txt
 !requirements-dev.txt
 
-# Agent tooling / chat exports
+# Local tooling
 .claude/
 .cursor/
-AGENTS.md
-CLAUDE.md

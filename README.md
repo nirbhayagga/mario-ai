@@ -35,6 +35,12 @@ python run_pipeline.py train --level 1-1 --seed 42 --n_envs 16 \
 python run_pipeline.py evaluate --seed 42
 ```
 
+Or skip training entirely: download `best_model.zip` from the [v1.0 release](https://github.com/nirbhayagga/mario-ai/releases/tag/v1.0) and watch it play:
+
+```bash
+python run_pipeline.py evaluate --model_path best_model.zip --level 1-1
+```
+
 ## Setup
 
 Python 3.8 or 3.9 is required due to dependency constraints.
@@ -257,17 +263,6 @@ python run_pipeline.py all --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
 ---
-
-## Stage Versions
-
-Each level has 4 visual variations (append `-v0` through `-v3` to the level):
-
-| Version | Description |
-| :--- | :--- |
-| `-v0` | Original NES graphics (default, recommended for both training and video). |
-| `-v1` | Downsampled sprites. |
-| `-v2` | Pixel-only, black background. |
-| `-v3` | Sprites only, no background. |
 
 ## Level Types
 
