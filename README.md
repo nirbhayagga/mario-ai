@@ -17,7 +17,7 @@ Trained on World 1-1 for 10M timesteps total: 5M from scratch, then a 5M fine-tu
 | Mean episode length | 462 agent steps (about 31 seconds of play) |
 | Furthest x reached | 3161 (the flag) in every episode |
 
-Training curves for the fine-tuning leg. The from-scratch leg plateaued at roughly 90% of the level with 0% clears, stuck at the staircase before the flag; the extra entropy broke through it, and the clear rate then climbs from 0% to about 100%:
+Training curves for the fine-tuning leg. The from-scratch leg plateaued at roughly 90% of the level with 0% clears, stuck at the staircase before the flag. The fine-tune changed two things at once (lower learning rate, higher entropy), so neither can be credited alone, but the clear rate climbs from 0% to about 100% during it:
 
 ![Training curves](assets/reward_curve.png)
 
@@ -168,7 +168,7 @@ Accepted by `visualize` and `all`.
 python run_pipeline.py train --level 1-1 --total_timesteps 5000000 --n_envs 8
 ```
 
-* **Timesteps**: 2-5M for World 1 levels, 5-10M for harder levels (castles, underwater).
+* **Timesteps**: budget 10M for a World 1 level (5M from scratch reached 0% clears on 1-1; see the result above), more for harder levels (castles, underwater).
 * **Envs**: 4-8 on a standard GPU, up to 24 if you have the VRAM/CPU cores.
 * **Reward/LR**: Custom rewards and LR schedules are enabled by default for optimal convergence.
 * **Action Space**: Use `--action_space right_only` to reduce the action space from 7 to 5, significantly speeding up training by preventing Mario from walking backward.
@@ -182,7 +182,7 @@ python run_pipeline.py train --level 1-1,1-2,1-3,1-4 --total_timesteps 15000000 
 
 * **Timesteps**: ~3-5M per level in the set (so 4 levels = 12-20M).
 * **Envs**: Use at least 4x the number of levels (e.g. 16 envs for 4 levels). Levels cycle evenly across envs.
-* **Entropy**: Consider `--ent_coef 0.02` for more exploration across diverse levels.
+* **Entropy**: Consider `--ent_coef 0.02` for more exploration; it was part of the recipe that got 1-1 past its plateau, not only a multi-level setting.
 * **Evaluation**: `best_model.zip` is selected on the mean evaluation reward across all levels in the set, and `evaluate` reports clear rate per level.
 
 ### Fine-Tuning from Checkpoint
@@ -190,10 +190,10 @@ python run_pipeline.py train --level 1-1,1-2,1-3,1-4 --total_timesteps 15000000 
 ```bash
 python run_pipeline.py train --level 1-1 \
     --load_model runs/1-1_5000000steps_rew_lr/best_model.zip \
-    --total_timesteps 2000000 --n_envs 8 --learning_rate 5e-5
+    --total_timesteps 5000000 --n_envs 16 --learning_rate 1e-4 --ent_coef 0.02
 ```
 
-* Use a lower learning rate (5e-5 or 2.5e-5) to refine without destroying learned behavior.
+* These are the settings that took 1-1 from 0% to 10/10 clears. Use a lower learning rate than the from-scratch run (1e-4 down to 2.5e-5) to refine without destroying learned behavior.
 * The linear LR schedule applies automatically on resume (disable with `--no_lr_schedule`).
 
 ### Which Map Version to Use
