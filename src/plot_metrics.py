@@ -3,7 +3,9 @@ Plotting Utility Module
 Generates a training-progress figure from TensorBoard event logs: the shaped
 training episode reward (SB3's rolling mean over the last 100 episodes) and
 the unshaped evaluation reward recorded by EvalCallback. Multiple event files
-(e.g. from resumed training runs) are merged by step number.
+(e.g. from resumed training runs) are merged by step number. Multi-level runs
+also log per-level clear rate and max x (`<tag>_<w>-<s>`), which are drawn as
+one line per level on the matching panel.
 """
 
 from __future__ import annotations
@@ -31,6 +33,14 @@ PANELS = [
     (EVAL_REWARD_TAG, "Evaluation reward (raw game reward, deterministic policy)", "Mean reward", None),
 ]
 REQUIRED_ANY = (TRAIN_REWARD_TAG, EVAL_REWARD_TAG)
+
+
+def panel_series(scalars: dict[str, list[tuple[int, float]]], tag: str) -> list[tuple[str, str]]:
+    """(tag, legend label) pairs for one panel: the pooled tag, then any per-level `<tag>_<level>` tags."""
+    per_level = sorted(t for t in scalars if t.startswith(tag + "_"))
+    if not per_level:
+        return [(tag, tag)]
+    return [(tag, "all levels")] + [(t, t[len(tag) + 1:]) for t in per_level]
 
 
 def find_event_files(log_dir: str) -> list[str]:
@@ -64,16 +74,21 @@ def plot_training_curves(log_dir: str, output_path: str) -> bool:
 
     fig, axes = plt.subplots(len(panels), 1, figsize=(10, 3.2 * len(panels)), sharex=True, squeeze=False)
     for ax, (tag, title, ylabel, ylim) in zip(axes[:, 0], panels):
-        steps, values = zip(*scalars[tag])
-        marker = "o" if len(steps) < 50 else None
-        ax.plot(steps, values, marker=marker, markersize=3, label=tag)
+        series = panel_series(scalars, tag)
+        for series_tag, label in series:
+            steps, values = zip(*scalars[series_tag])
+            marker = "o" if len(steps) < 50 else None
+            # With per-level lines present, the pooled line is context, not the headline.
+            pooled = len(series) > 1 and series_tag == tag
+            style = {"color": "black", "linestyle": "--", "linewidth": 1} if pooled else {}
+            ax.plot(steps, values, marker=marker, markersize=3, label=label, **style)
+            print(f"Plotting {len(steps)} data points for '{series_tag}'.")
         ax.set_title(title)
         ax.set_ylabel(ylabel)
         if ylim is not None:
             ax.set_ylim(*ylim)
         ax.grid(True, linestyle="--", alpha=0.7)
         ax.legend(loc="lower right")
-        print(f"Plotting {len(steps)} data points for '{tag}'.")
     axes[-1, 0].set_xlabel("Timesteps")
     fig.suptitle("Mario PPO Training Progress")
     fig.tight_layout()

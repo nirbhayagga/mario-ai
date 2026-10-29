@@ -17,12 +17,12 @@ def make_callback(window=100):
     return callback
 
 
-def step(callback, xs, dones, flags=None):
+def step(callback, xs, dones, flags=None, levels=None):
     flags = flags or [False] * len(xs)
-    callback.locals = {
-        "infos": [{"x_pos": x, "flag_get": f} for x, f in zip(xs, flags)],
-        "dones": dones,
-    }
+    infos = [{"x_pos": x, "flag_get": f} for x, f in zip(xs, flags)]
+    for info, level in zip(infos, levels or []):
+        info["world"], info["stage"] = level
+    callback.locals = {"infos": infos, "dones": dones}
     return callback._on_step()
 
 
@@ -64,3 +64,37 @@ def test_rolling_window_drops_old_episodes():
 def test_on_step_never_interrupts_training():
     callback = make_callback()
     assert step(callback, [1], [False]) is True
+
+
+def test_single_level_logs_only_pooled_stats():
+    callback = make_callback()
+    step(callback, [500, 600], [True, True], flags=[True, False], levels=[(1, 1), (1, 1)])
+    callback._on_rollout_end()
+    values = callback.logger.name_to_value
+    assert values["rollout/flag_rate"] == 0.5
+    assert not any(key.startswith("rollout/flag_rate_") for key in values)
+
+
+def test_multi_level_logs_per_level_stats():
+    callback = make_callback()
+    levels = [(1, 1), (1, 2)]
+    step(callback, [3000, 400], [True, True], flags=[True, False], levels=levels)
+    step(callback, [2000, 900], [True, True], flags=[False, False], levels=levels)
+    callback._on_rollout_end()
+    values = callback.logger.name_to_value
+    assert values["rollout/flag_rate"] == 0.25
+    assert values["rollout/flag_rate_1-1"] == 0.5
+    assert values["rollout/flag_rate_1-2"] == 0.0
+    assert values["rollout/max_x_mean_1-1"] == 2500
+    assert values["rollout/max_x_mean_1-2"] == 650
+
+
+def test_episode_level_comes_from_its_first_step():
+    callback = make_callback()
+    step(callback, [100, 100], [False, False], levels=[(1, 1), (1, 2)])
+    # env 0 clears 1-1 and the RAM already reports the next stage on the final step
+    step(callback, [3161, 200], [True, True], flags=[True, False], levels=[(1, 2), (1, 2)])
+    callback._on_rollout_end()
+    values = callback.logger.name_to_value
+    assert values["rollout/flag_rate_1-1"] == 1.0
+    assert values["rollout/flag_rate_1-2"] == 0.0

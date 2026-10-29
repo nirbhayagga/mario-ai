@@ -86,7 +86,7 @@ Everything runs through `run_pipeline.py <command>`:
 | `train` | PPO training on one or more levels. | Nothing (optional `--load_model` to resume) | `run_config.json`, checkpoints, `best_model.zip`, `mario_ppo_final.zip`, TensorBoard logs. |
 | `evaluate` | For every level of the run: runs `--eval_episodes` episodes for a per-level clear-rate table, then replays the best one and records it with a metadata overlay. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
 | `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) side by side. | A trained run | `progress_montage.mp4` and a half-resolution `.gif`. |
-| `plot` | Plots clear rate, max distance, training reward, and evaluation reward from TensorBoard logs. | A trained run | `reward_curve.png`. |
+| `plot` | Plots clear rate, max distance, training reward, and evaluation reward from TensorBoard logs. Multi-level runs get one clear-rate and max-distance line per level. | A trained run | `reward_curve.png`. |
 | `dashboard` | Launches TensorBoard on a run. | A trained run | Web UI. |
 | `manual` | Human-controlled gameplay via keyboard. Resets on death; Escape quits. | Nothing | Nothing. |
 | `all` | `validate`, `train`, `evaluate`, `visualize`, and `plot` in sequence. | Nothing | All of the above. |
@@ -184,6 +184,8 @@ python run_pipeline.py train --level 1-1,1-2,1-3,1-4 --total_timesteps 15000000 
 * **Envs**: Use at least 4x the number of levels (e.g. 16 envs for 4 levels). Levels cycle evenly across envs.
 * **Entropy**: Consider `--ent_coef 0.02` for more exploration; it was part of the recipe that got 1-1 past its plateau, not only a multi-level setting.
 * **Evaluation**: `best_model.zip` is selected on the mean evaluation reward across all levels in the set, and `evaluate` reports clear rate per level.
+* **Curves**: Training logs `rollout/flag_rate_<level>` and `rollout/max_x_mean_<level>` next to the pooled numbers, so a level that never clears is not hidden behind one that always does.
+* **Montage**: `visualize` uses the first level of the run; pass `--level 1-3` to record a different one.
 
 ### Fine-Tuning from Checkpoint
 
@@ -301,7 +303,7 @@ The 32 levels fall into four categories requiring different AI strategies:
     * `evaluation_run.mp4` / `evaluation_run.gif`: The best evaluation episode, with overlay (the GIF embeds in GitHub READMEs). Multi-level runs write one pair per level, e.g. `evaluation_run_1-2.mp4`.
     * `evaluation_summary.json`: Per-level clear rate, mean reward, and max distance across `--eval_episodes` episodes.
     * `progress_montage.mp4` / `progress_montage.gif`: Side-by-side checkpoint comparison (the GIF is half resolution at 10 fps so it stays embeddable).
-    * `reward_curve.png`: Training and evaluation reward curves.
+    * `reward_curve.png`: Clear rate, max distance, training reward, and evaluation reward curves (per level for multi-level runs).
 
 ---
 

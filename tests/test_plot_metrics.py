@@ -48,6 +48,29 @@ def test_plot_adds_panels_for_clear_rate_and_max_x(tmp_path):
     assert output.exists()
 
 
+def test_panel_series_adds_per_level_lines():
+    scalars = {pm.FLAG_RATE_TAG: [], pm.FLAG_RATE_TAG + "_1-2": [], pm.FLAG_RATE_TAG + "_1-1": [],
+               pm.MAX_X_TAG: []}
+    assert pm.panel_series(scalars, pm.FLAG_RATE_TAG) == [
+        (pm.FLAG_RATE_TAG, "all levels"),
+        (pm.FLAG_RATE_TAG + "_1-1", "1-1"),
+        (pm.FLAG_RATE_TAG + "_1-2", "1-2"),
+    ]
+    assert pm.panel_series(scalars, pm.MAX_X_TAG) == [(pm.MAX_X_TAG, pm.MAX_X_TAG)]
+
+
+def test_plot_draws_per_level_runs(tmp_path):
+    write_events(tmp_path / "PPO_1", {
+        pm.TRAIN_REWARD_TAG: [(1000, 1.0), (2000, 2.0)],
+        pm.FLAG_RATE_TAG: [(1000, 0.25), (2000, 0.5)],
+        pm.FLAG_RATE_TAG + "_1-1": [(1000, 0.5), (2000, 1.0)],
+        pm.FLAG_RATE_TAG + "_1-2": [(1000, 0.0), (2000, 0.0)],
+    })
+    output = tmp_path / "reward_curve.png"
+    assert pm.plot_training_curves(str(tmp_path), str(output))
+    assert output.exists()
+
+
 def test_plot_fails_loudly_without_reward_tags(tmp_path, capsys):
     write_events(tmp_path / "PPO_1", {"time/fps": [(100, 200.0)]})
     output = tmp_path / "reward_curve.png"
