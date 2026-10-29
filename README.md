@@ -84,7 +84,7 @@ Everything runs through `run_pipeline.py <command>`:
 | :--- | :--- | :--- | :--- |
 | `validate` | Builds the exact environment stack training will use and steps it once. | Nothing | Pass/fail. |
 | `train` | PPO training on one or more levels. | Nothing (optional `--load_model` to resume) | `run_config.json`, checkpoints, `best_model.zip`, `mario_ppo_final.zip`, TensorBoard logs. |
-| `evaluate` | For every level of the run: runs `--eval_episodes` episodes for a per-level clear-rate table, then replays the best one and records it with a metadata overlay. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
+| `evaluate` | For every level of the run: runs `--eval_episodes` episodes for a per-level clear-rate table (printed as plain text and as Markdown), then replays the best one and records it with a metadata overlay. | A trained run | `.mp4` + `.gif` per level, `evaluation_summary.json`. |
 | `visualize` | Renders 4 evenly spaced checkpoints (first, one third, two thirds, last) side by side. | A trained run | `progress_montage.mp4` and a half-resolution `.gif`. |
 | `plot` | Plots clear rate, max distance, training reward, and evaluation reward from TensorBoard logs. Multi-level runs get one clear-rate and max-distance line per level. | A trained run | `reward_curve.png`. |
 | `dashboard` | Launches TensorBoard on a run. | A trained run | Web UI. |

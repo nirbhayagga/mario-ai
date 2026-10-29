@@ -63,8 +63,8 @@ def parse_evaluation_arguments() -> argparse.Namespace:
     parser.add_argument("--video_speed", type=float, default=2.0,
                         help="Playback speed of the recording relative to real time (1.0 = real time).")
     parser.add_argument("--episodes", type=int, default=1,
-                        help="Episodes to run for clear-rate statistics. The first is recorded; "
-                             "the rest use random no-op starts and are not rendered.")
+                        help="Episodes to run for clear-rate statistics, each from a seeded random "
+                             "no-op start. Only the best one is replayed and recorded.")
     parser.add_argument("--action_space", type=str, default="simple", choices=["simple", "complex", "right_only"],
                         help="Action space to use (simple, complex, or right_only).")
     parser.add_argument("--seed", type=int, default=None,
@@ -214,6 +214,18 @@ def format_summary_table(per_level: dict[str, dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def format_markdown_table(per_level: dict[str, dict[str, Any]]) -> str:
+    """The same statistics as a GitHub-flavoured markdown table, ready for the README."""
+    lines = ["| Level | Clear rate | Mean game reward | Mean max X | Best X |",
+             "| :--- | :--- | :--- | :--- | :--- |"]
+    for env_id, stats in per_level.items():
+        n = stats["episodes"]
+        clears = round(stats["clear_rate"] * n)
+        lines.append(f"| {level_tag(env_id)} | {stats['clear_rate']:.0%} ({clears}/{n}) | {stats['mean_reward']:.0f} "
+                     f"| {stats['mean_max_x']:.0f} | {stats['best_max_x']} |")
+    return "\n".join(lines)
+
+
 def export_evaluation_video() -> None:
     args = parse_evaluation_arguments()
     levels = [e.strip() for e in args.env_id.split(",")]
@@ -249,6 +261,8 @@ def export_evaluation_video() -> None:
 
     print(f"\nEvaluation summary ({args.episodes} episodes per level):")
     print(format_summary_table(per_level))
+    print("\nMarkdown:")
+    print(format_markdown_table(per_level))
     print(f"Summary written to {summary_path}")
 
 

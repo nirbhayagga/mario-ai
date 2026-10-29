@@ -112,6 +112,20 @@ def test_format_summary_table_one_row_per_level():
     assert lines[2].startswith("1-2") and "0%" in lines[2]
 
 
+def test_format_markdown_table_counts_clears():
+    table = evaluate.format_markdown_table({
+        "SuperMarioBros-1-1-v0": {"episodes": 10, "clear_rate": 0.9, "mean_reward": 2950.4,
+                                  "mean_max_x": 3100.2, "best_max_x": 3161},
+        "SuperMarioBros-1-4-v0": {"episodes": 10, "clear_rate": 0.0, "mean_reward": 800.0,
+                                  "mean_max_x": 900.0, "best_max_x": 1200},
+    })
+    lines = table.splitlines()
+    assert len(lines) == 4
+    assert lines[1].startswith("| :---")
+    assert lines[2] == "| 1-1 | 90% (9/10) | 2950 | 3100 | 3161 |"
+    assert lines[3] == "| 1-4 | 0% (0/10) | 800 | 900 | 1200 |"
+
+
 def test_video_fps_scales_from_real_time():
     assert evaluate.video_fps(1.0) == 15.0
     assert evaluate.video_fps(2.0) == 30.0
